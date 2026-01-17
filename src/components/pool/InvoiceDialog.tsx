@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { Printer, Download, X, Waves } from 'lucide-react';
+import { Printer, Download, Waves } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 interface BookingDetails {
@@ -39,229 +39,263 @@ export function InvoiceDialog({ open, onClose, booking }: InvoiceDialogProps) {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    // Thermal printer optimized styles (80mm width = ~302px at 96dpi)
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Invoice - ${booking.id}</title>
+          <title>Receipt - ${booking.id}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 
-              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-              padding: 40px;
-              color: #1a1a1a;
+              font-family: 'Courier New', monospace;
+              font-size: 12px;
+              line-height: 1.4;
+              color: #000;
+              width: 80mm;
+              max-width: 80mm;
+              margin: 0 auto;
+              padding: 2mm;
             }
-            .invoice-container { max-width: 800px; margin: 0 auto; }
-            .header { 
-              display: flex; 
-              justify-content: space-between; 
-              align-items: flex-start;
-              margin-bottom: 40px;
-              padding-bottom: 20px;
-              border-bottom: 2px solid #0ea5e9;
+            .receipt {
+              width: 100%;
             }
-            .logo { 
-              display: flex; 
-              align-items: center; 
-              gap: 12px;
-            }
-            .logo-icon {
-              width: 48px;
-              height: 48px;
-              background: linear-gradient(135deg, #0ea5e9, #0284c7);
-              border-radius: 12px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-              font-size: 24px;
-            }
-            .company-name { 
-              font-size: 28px; 
-              font-weight: 700;
-              color: #0ea5e9;
-            }
-            .invoice-title { text-align: right; }
-            .invoice-title h2 { 
-              font-size: 32px; 
-              color: #0ea5e9;
+            .header {
+              text-align: center;
+              border-bottom: 1px dashed #000;
+              padding-bottom: 8px;
               margin-bottom: 8px;
             }
-            .invoice-id { 
-              font-size: 14px; 
-              color: #666;
+            .company-name {
+              font-size: 16px;
+              font-weight: bold;
+              margin-bottom: 2px;
             }
-            .details-grid {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 40px;
-              margin-bottom: 40px;
+            .company-sub {
+              font-size: 10px;
             }
-            .detail-section h3 {
-              font-size: 12px;
-              text-transform: uppercase;
-              letter-spacing: 1px;
-              color: #666;
-              margin-bottom: 12px;
-            }
-            .detail-section p {
+            .receipt-title {
+              text-align: center;
               font-size: 14px;
-              line-height: 1.8;
+              font-weight: bold;
+              margin: 8px 0;
+              padding: 4px 0;
+              border-top: 1px dashed #000;
+              border-bottom: 1px dashed #000;
             }
-            .detail-section .name {
-              font-size: 18px;
-              font-weight: 600;
-              color: #1a1a1a;
+            .info-section {
+              margin-bottom: 8px;
             }
-            .items-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-bottom: 30px;
-            }
-            .items-table th {
-              background: #f8fafc;
-              padding: 14px 16px;
-              text-align: left;
-              font-size: 12px;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-              color: #666;
-              border-bottom: 2px solid #e2e8f0;
-            }
-            .items-table td {
-              padding: 16px;
-              border-bottom: 1px solid #e2e8f0;
-              font-size: 14px;
-            }
-            .items-table .amount { text-align: right; }
-            .totals {
-              display: flex;
-              justify-content: flex-end;
-              margin-bottom: 40px;
-            }
-            .totals-box {
-              width: 280px;
-            }
-            .totals-row {
+            .info-row {
               display: flex;
               justify-content: space-between;
-              padding: 8px 0;
-              font-size: 14px;
+              margin-bottom: 2px;
+              font-size: 11px;
             }
-            .totals-row.total {
-              border-top: 2px solid #0ea5e9;
+            .info-row .label {
+              color: #333;
+            }
+            .info-row .value {
+              font-weight: bold;
+              text-align: right;
+              max-width: 55%;
+            }
+            .divider {
+              border-top: 1px dashed #000;
+              margin: 8px 0;
+            }
+            .item-section {
+              margin-bottom: 8px;
+            }
+            .item-header {
+              display: flex;
+              justify-content: space-between;
+              font-weight: bold;
+              font-size: 11px;
+              border-bottom: 1px solid #000;
+              padding-bottom: 4px;
+              margin-bottom: 4px;
+            }
+            .item-row {
+              display: flex;
+              justify-content: space-between;
+              font-size: 11px;
+              margin-bottom: 4px;
+            }
+            .item-name {
+              max-width: 60%;
+            }
+            .item-details {
+              font-size: 10px;
+              color: #333;
+              margin-left: 8px;
+            }
+            .totals-section {
+              border-top: 1px dashed #000;
+              padding-top: 8px;
               margin-top: 8px;
-              padding-top: 16px;
-              font-size: 20px;
-              font-weight: 700;
-              color: #0ea5e9;
+            }
+            .total-row {
+              display: flex;
+              justify-content: space-between;
+              font-size: 11px;
+              margin-bottom: 2px;
+            }
+            .total-row.grand-total {
+              font-size: 14px;
+              font-weight: bold;
+              border-top: 1px solid #000;
+              padding-top: 6px;
+              margin-top: 6px;
+            }
+            .status-section {
+              text-align: center;
+              margin: 10px 0;
             }
             .status-badge {
               display: inline-block;
-              padding: 6px 16px;
-              border-radius: 20px;
+              padding: 4px 12px;
               font-size: 12px;
-              font-weight: 600;
-              text-transform: uppercase;
+              font-weight: bold;
+              border: 2px solid #000;
+              border-radius: 4px;
             }
             .status-paid {
-              background: #dcfce7;
-              color: #166534;
+              background: #fff;
             }
             .status-pending {
-              background: #fef3c7;
-              color: #92400e;
+              background: #fff;
             }
             .footer {
               text-align: center;
-              padding-top: 30px;
-              border-top: 1px solid #e2e8f0;
-              color: #666;
-              font-size: 12px;
+              border-top: 1px dashed #000;
+              padding-top: 8px;
+              margin-top: 10px;
+              font-size: 10px;
+            }
+            .footer p {
+              margin-bottom: 2px;
+            }
+            .barcode {
+              text-align: center;
+              font-family: 'Libre Barcode 39', cursive;
+              font-size: 32px;
+              margin: 8px 0;
+              letter-spacing: 4px;
+            }
+            .qr-placeholder {
+              text-align: center;
+              margin: 8px 0;
+              font-size: 10px;
             }
             @media print {
-              body { padding: 20px; }
+              @page {
+                size: 80mm auto;
+                margin: 0;
+              }
+              body {
+                width: 80mm;
+                padding: 2mm;
+              }
             }
           </style>
         </head>
         <body>
-          <div class="invoice-container">
+          <div class="receipt">
             <div class="header">
-              <div class="logo">
-                <div class="logo-icon">🏊</div>
-                <div>
-                  <div class="company-name">POOL Management</div>
-                  <div style="font-size: 12px; color: #666;">Premium Pool Services</div>
-                </div>
+              <div class="company-name">🏊 POOL MANAGEMENT</div>
+              <div class="company-sub">Premium Pool Services</div>
+            </div>
+
+            <div class="receipt-title">RECEIPT</div>
+
+            <div class="info-section">
+              <div class="info-row">
+                <span class="label">Receipt #:</span>
+                <span class="value">${booking.id}</span>
               </div>
-              <div class="invoice-title">
-                <h2>INVOICE</h2>
-                <div class="invoice-id">${booking.id}</div>
-                <div style="margin-top: 8px;">
-                  <span class="status-badge status-${booking.paymentStatus}">
-                    ${booking.paymentStatus.toUpperCase()}
-                  </span>
-                </div>
+              <div class="info-row">
+                <span class="label">Date:</span>
+                <span class="value">${new Date().toLocaleDateString()}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">Time:</span>
+                <span class="value">${new Date().toLocaleTimeString()}</span>
               </div>
             </div>
 
-            <div class="details-grid">
-              <div class="detail-section">
-                <h3>Bill To</h3>
-                <p class="name">${booking.customerName}</p>
-                <p>${booking.email}</p>
-                <p>${booking.phone}</p>
+            <div class="divider"></div>
+
+            <div class="info-section">
+              <div class="info-row">
+                <span class="label">Customer:</span>
+                <span class="value">${booking.customerName}</span>
               </div>
-              <div class="detail-section" style="text-align: right;">
-                <h3>Booking Details</h3>
-                <p><strong>Date:</strong> ${booking.date}</p>
-                <p><strong>Time:</strong> ${booking.timeSlot}</p>
-                <p><strong>Generated:</strong> ${new Date().toLocaleDateString()}</p>
+              <div class="info-row">
+                <span class="label">Phone:</span>
+                <span class="value">${booking.phone}</span>
               </div>
             </div>
 
-            <table class="items-table">
-              <thead>
-                <tr>
-                  <th>Description</th>
-                  <th>Quantity</th>
-                  <th>Rate</th>
-                  <th class="amount">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>
-                    <strong>${booking.passType}</strong>
-                    <div style="color: #666; font-size: 12px;">Pool Access - ${booking.timeSlot}</div>
-                  </td>
-                  <td>${booking.persons} person(s)</td>
-                  <td>$${(booking.amount / booking.persons).toFixed(2)}</td>
-                  <td class="amount">$${booking.amount.toFixed(2)}</td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="divider"></div>
 
-            <div class="totals">
-              <div class="totals-box">
-                <div class="totals-row">
-                  <span>Subtotal</span>
-                  <span>$${booking.amount.toFixed(2)}</span>
-                </div>
-                <div class="totals-row">
-                  <span>Tax (0%)</span>
-                  <span>$0.00</span>
-                </div>
-                <div class="totals-row total">
-                  <span>Total</span>
-                  <span>$${booking.amount.toFixed(2)}</span>
-                </div>
+            <div class="info-section">
+              <div class="info-row">
+                <span class="label">Booking Date:</span>
+                <span class="value">${booking.date}</span>
               </div>
+              <div class="info-row">
+                <span class="label">Time Slot:</span>
+                <span class="value">${booking.timeSlot}</span>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="item-section">
+              <div class="item-header">
+                <span>ITEM</span>
+                <span>AMOUNT</span>
+              </div>
+              <div class="item-row">
+                <div class="item-name">
+                  ${booking.passType}
+                  <div class="item-details">${booking.persons} person(s)</div>
+                </div>
+                <span>$${booking.amount.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div class="totals-section">
+              <div class="total-row">
+                <span>Subtotal:</span>
+                <span>$${booking.amount.toFixed(2)}</span>
+              </div>
+              <div class="total-row">
+                <span>Tax (0%):</span>
+                <span>$0.00</span>
+              </div>
+              <div class="total-row grand-total">
+                <span>TOTAL:</span>
+                <span>$${booking.amount.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div class="status-section">
+              <span class="status-badge status-${booking.paymentStatus}">
+                ${booking.paymentStatus.toUpperCase()}
+              </span>
             </div>
 
             <div class="footer">
-              <p>Thank you for choosing POOL Management!</p>
-              <p style="margin-top: 8px;">For questions, contact us at support@poolmanagement.com</p>
+              <p>Thank you for your visit!</p>
+              <p>support@poolmanagement.com</p>
+              <p style="margin-top: 6px; font-size: 9px;">
+                --------------------------------
+              </p>
+              <p style="font-size: 9px;">
+                ${booking.id}
+              </p>
             </div>
           </div>
         </body>
@@ -283,10 +317,10 @@ export function InvoiceDialog({ open, onClose, booking }: InvoiceDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span>Booking Invoice</span>
+            <span>Booking Receipt</span>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handlePrint}>
                 <Printer className="h-4 w-4 mr-2" />
@@ -300,93 +334,108 @@ export function InvoiceDialog({ open, onClose, booking }: InvoiceDialogProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <div ref={invoiceRef} className="bg-background p-6 rounded-lg border">
-          {/* Invoice Header */}
-          <div className="flex justify-between items-start mb-8">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-xl gradient-pool flex items-center justify-center">
-                <Waves className="h-6 w-6 text-primary-foreground" />
+        {/* Preview - styled like thermal receipt */}
+        <div ref={invoiceRef} className="bg-background p-4 rounded-lg border font-mono text-sm">
+          {/* Receipt Header */}
+          <div className="text-center border-b border-dashed pb-3 mb-3">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <div className="h-8 w-8 rounded-lg gradient-pool flex items-center justify-center">
+                <Waves className="h-4 w-4 text-primary-foreground" />
               </div>
+              <h2 className="text-lg font-bold text-pool">POOL MANAGEMENT</h2>
+            </div>
+            <p className="text-xs text-muted-foreground">Premium Pool Services</p>
+          </div>
+
+          {/* Receipt Title */}
+          <div className="text-center py-2 border-y border-dashed mb-3">
+            <h3 className="font-bold">RECEIPT</h3>
+          </div>
+
+          {/* Receipt Info */}
+          <div className="space-y-1 mb-3 text-xs">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Receipt #:</span>
+              <span className="font-medium">{booking.id}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Date:</span>
+              <span>{new Date().toLocaleDateString()}</span>
+            </div>
+          </div>
+
+          <Separator className="border-dashed mb-3" />
+
+          {/* Customer Info */}
+          <div className="space-y-1 mb-3 text-xs">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Customer:</span>
+              <span className="font-medium truncate ml-2">{booking.customerName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Phone:</span>
+              <span>{booking.phone}</span>
+            </div>
+          </div>
+
+          <Separator className="border-dashed mb-3" />
+
+          {/* Booking Details */}
+          <div className="space-y-1 mb-3 text-xs">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Booking Date:</span>
+              <span>{booking.date}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Time Slot:</span>
+              <span>{booking.timeSlot}</span>
+            </div>
+          </div>
+
+          <Separator className="border-dashed mb-3" />
+
+          {/* Items */}
+          <div className="mb-3">
+            <div className="flex justify-between text-xs font-bold border-b pb-1 mb-2">
+              <span>ITEM</span>
+              <span>AMOUNT</span>
+            </div>
+            <div className="flex justify-between text-xs">
               <div>
-                <h2 className="text-xl font-bold text-pool">POOL Management</h2>
-                <p className="text-sm text-muted-foreground">Premium Pool Services</p>
+                <p className="font-medium">{booking.passType}</p>
+                <p className="text-muted-foreground">{booking.persons} person(s)</p>
               </div>
+              <span className="font-medium">${booking.amount.toFixed(2)}</span>
             </div>
-            <div className="text-right">
-              <h3 className="text-2xl font-bold text-pool">INVOICE</h3>
-              <p className="text-sm text-muted-foreground">{booking.id}</p>
-              <div className="mt-2">
-                <StatusBadge status={booking.paymentStatus} />
-              </div>
-            </div>
-          </div>
-
-          <Separator className="mb-6" />
-
-          {/* Customer & Booking Details */}
-          <div className="grid grid-cols-2 gap-8 mb-8">
-            <div>
-              <h4 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Bill To</h4>
-              <p className="font-semibold">{booking.customerName}</p>
-              <p className="text-sm text-muted-foreground">{booking.email}</p>
-              <p className="text-sm text-muted-foreground">{booking.phone}</p>
-            </div>
-            <div className="text-right">
-              <h4 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Booking Details</h4>
-              <p className="text-sm"><span className="text-muted-foreground">Date:</span> {booking.date}</p>
-              <p className="text-sm"><span className="text-muted-foreground">Time:</span> {booking.timeSlot}</p>
-              <p className="text-sm"><span className="text-muted-foreground">Generated:</span> {new Date().toLocaleDateString()}</p>
-            </div>
-          </div>
-
-          {/* Items Table */}
-          <div className="border rounded-lg overflow-hidden mb-6">
-            <table className="w-full">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground">Description</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground">Qty</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground">Rate</th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-t">
-                  <td className="py-4 px-4">
-                    <p className="font-medium">{booking.passType}</p>
-                    <p className="text-sm text-muted-foreground">Pool Access - {booking.timeSlot}</p>
-                  </td>
-                  <td className="py-4 px-4">{booking.persons}</td>
-                  <td className="py-4 px-4">${(booking.amount / booking.persons).toFixed(2)}</td>
-                  <td className="py-4 px-4 text-right font-medium">${booking.amount.toFixed(2)}</td>
-                </tr>
-              </tbody>
-            </table>
           </div>
 
           {/* Totals */}
-          <div className="flex justify-end mb-8">
-            <div className="w-64 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>${booking.amount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax (0%)</span>
-                <span>$0.00</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between text-lg font-bold">
-                <span>Total</span>
-                <span className="text-pool">${booking.amount.toFixed(2)}</span>
-              </div>
+          <div className="border-t border-dashed pt-2 space-y-1 text-xs">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Subtotal:</span>
+              <span>${booking.amount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Tax (0%):</span>
+              <span>$0.00</span>
+            </div>
+            <div className="flex justify-between text-base font-bold border-t pt-2 mt-2">
+              <span>TOTAL:</span>
+              <span className="text-pool">${booking.amount.toFixed(2)}</span>
             </div>
           </div>
 
+          {/* Status */}
+          <div className="text-center my-3">
+            <StatusBadge status={booking.paymentStatus} />
+          </div>
+
           {/* Footer */}
-          <div className="text-center text-sm text-muted-foreground border-t pt-6">
-            <p>Thank you for choosing POOL Management!</p>
-            <p className="mt-1">For questions, contact us at support@poolmanagement.com</p>
+          <div className="text-center text-xs text-muted-foreground border-t border-dashed pt-3">
+            <p>Thank you for your visit!</p>
+            <p>support@poolmanagement.com</p>
+            <p className="mt-2 text-[10px]">--------------------------------</p>
+            <p className="text-[10px]">{booking.id}</p>
           </div>
         </div>
       </DialogContent>
