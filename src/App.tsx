@@ -9,6 +9,9 @@ import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import PoolDashboard from "./pages/pool/PoolDashboard";
 import PoolBookings from "./pages/pool/PoolBookings";
+import NewPoolBooking from "./pages/pool/NewPoolBooking";
+import ViewPoolBooking from "./pages/pool/ViewPoolBooking";
+import PoolReports from "./pages/pool/PoolReports";
 import ConferenceDashboard from "./pages/conference/ConferenceDashboard";
 import HotelDashboard from "./pages/hotel/HotelDashboard";
 import UsersPage from "./pages/users/UsersPage";
@@ -35,7 +38,9 @@ const App = () => (
               {/* Pool Routes */}
               <Route path="/pool" element={<PoolDashboard />} />
               <Route path="/pool/bookings" element={<PoolBookings />} />
-              <Route path="/pool/reports" element={<PoolDashboard />} />
+              <Route path="/pool/bookings/new" element={<NewPoolBooking />} />
+              <Route path="/pool/bookings/:id" element={<ViewPoolBooking />} />
+              <Route path="/pool/reports" element={<PoolReports />} />
               
               {/* Conference Routes */}
               <Route path="/conference" element={<ConferenceDashboard />} />
