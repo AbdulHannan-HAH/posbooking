@@ -143,16 +143,23 @@ export default function PoolBookings() {
                       <StatusBadge status={booking.status} />
                     </td>
                     <td className="py-3 px-2">
-                      {booking.status === 'pending' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs"
-                          onClick={() => handleStatusUpdate(booking.id, 'paid')}
-                        >
-                          Mark Paid
-                        </Button>
-                      )}
+                      <div className="flex gap-2">
+                        <Link to={`/pool/bookings/${booking.id}`}>
+                          <Button size="sm" variant="ghost" className="text-xs">
+                            View
+                          </Button>
+                        </Link>
+                        {booking.status === 'pending' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs"
+                            onClick={() => handleStatusUpdate(booking.id, 'paid')}
+                          >
+                            Mark Paid
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
