@@ -18,7 +18,7 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!username.trim() || !password.trim()) {
       toast({
         title: 'Error',
@@ -29,7 +29,7 @@ export default function Login() {
     }
 
     const success = await login(username, password);
-    
+
     if (success) {
       toast({
         title: 'Welcome back!',
@@ -64,7 +64,7 @@ export default function Login() {
             Streamline Your Operations
           </h2>
           <p className="text-primary-foreground/70 text-lg max-w-md">
-            Manage your pool, conference halls, and hotel rooms all in one place. 
+            Manage your pool, conference halls, and hotel rooms all in one place.
             Efficient booking, seamless payments, and powerful analytics.
           </p>
 
@@ -131,6 +131,7 @@ export default function Login() {
                     onChange={(e) => setUsername(e.target.value)}
                     className="h-11"
                     autoComplete="username"
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -144,11 +145,13 @@ export default function Login() {
                       onChange={(e) => setPassword(e.target.value)}
                       className="h-11 pr-10"
                       autoComplete="current-password"
+                      disabled={isLoading}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      disabled={isLoading}
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -174,7 +177,7 @@ export default function Login() {
                 </Button>
               </form>
 
-              {/* Demo credentials */}
+              {/* Demo credentials - Update with your actual credentials */}
               <div className="mt-6 p-4 bg-muted rounded-lg">
                 <p className="text-sm font-medium mb-2">Demo Credentials:</p>
                 <div className="text-xs text-muted-foreground space-y-1">
@@ -183,6 +186,9 @@ export default function Login() {
                   <p><span className="font-medium">Conference:</span> confstaff / conf123</p>
                   <p><span className="font-medium">Hotel:</span> hotelstaff / hotel123</p>
                 </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Note: Default users are created automatically on first startup
+                </p>
               </div>
             </CardContent>
           </Card>

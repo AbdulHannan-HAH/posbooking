@@ -17,51 +17,106 @@ import HotelDashboard from "./pages/hotel/HotelDashboard";
 import UsersPage from "./pages/users/UsersPage";
 import AnalyticsPage from "./pages/analytics/AnalyticsPage";
 import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
+import PoolSettings from "./pages/pool/PoolSettings";
+
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
           <Routes>
+            {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            
-            {/* Protected Routes */}
+
+            {/* Protected Routes with Layout */}
             <Route element={<DashboardLayout />}>
-              <Route path="/dashboard" element={<AdminDashboard />} />
-              
-              {/* Pool Routes */}
-              <Route path="/pool" element={<PoolDashboard />} />
-              <Route path="/pool/bookings" element={<PoolBookings />} />
-              <Route path="/pool/bookings/new" element={<NewPoolBooking />} />
-              <Route path="/pool/bookings/:id" element={<ViewPoolBooking />} />
-              <Route path="/pool/reports" element={<PoolReports />} />
-              
-              {/* Conference Routes */}
-              <Route path="/conference" element={<ConferenceDashboard />} />
-              <Route path="/conference/bookings" element={<ConferenceDashboard />} />
-              <Route path="/conference/invoices" element={<ConferenceDashboard />} />
-              
-              {/* Hotel Routes */}
-              <Route path="/hotel" element={<HotelDashboard />} />
-              <Route path="/hotel/rooms" element={<HotelDashboard />} />
-              <Route path="/hotel/reservations" element={<HotelDashboard />} />
-              
-              {/* Admin Routes */}
-              <Route path="/users" element={<UsersPage />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
+              {/* Admin Dashboard - Only accessible by admin */}
+              <Route path="/dashboard" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/pool/settings" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <PoolSettings />
+                </ProtectedRoute>
+              } />
+
+              {/* Pool Routes - Accessible by admin and pool_staff */}
+              <Route path="/pool" element={
+                <ProtectedRoute allowedRoles={['admin', 'pool_staff']}>
+                  <PoolDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/pool/bookings" element={
+                <ProtectedRoute allowedRoles={['admin', 'pool_staff']}>
+                  <PoolBookings />
+                </ProtectedRoute>
+              } />
+              <Route path="/pool/bookings/new" element={
+                <ProtectedRoute allowedRoles={['admin', 'pool_staff']}>
+                  <NewPoolBooking />
+                </ProtectedRoute>
+              } />
+              <Route path="/pool/bookings/:id" element={
+                <ProtectedRoute allowedRoles={['admin', 'pool_staff']}>
+                  <ViewPoolBooking />
+                </ProtectedRoute>
+              } />
+              <Route path="/pool/reports" element={
+                <ProtectedRoute allowedRoles={['admin', 'pool_staff']}>
+                  <PoolReports />
+                </ProtectedRoute>
+              } />
+
+              {/* Conference Routes - Accessible by admin and conference_staff */}
+              <Route path="/conference" element={
+                <ProtectedRoute allowedRoles={['admin', 'conference_staff']}>
+                  <ConferenceDashboard />
+                </ProtectedRoute>
+              } />
+
+              {/* Hotel Routes - Accessible by admin and hotel_staff */}
+              <Route path="/hotel" element={
+                <ProtectedRoute allowedRoles={['admin', 'hotel_staff']}>
+                  <HotelDashboard />
+                </ProtectedRoute>
+              } />
+
+              {/* Admin Only Routes */}
+              <Route path="/users" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <UsersPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/analytics" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AnalyticsPage />
+                </ProtectedRoute>
+              } />
             </Route>
-            
+
+
+            // Add to protected routes
+            <Route path="/pool/settings" element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <PoolSettings />
+              </ProtectedRoute>
+            } />
+
+            {/* 404 Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+        </TooltipProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 

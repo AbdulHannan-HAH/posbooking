@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -19,18 +19,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Users, Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Users, Plus, Search, Pencil, Trash2, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { Switch } from '@/components/ui/switch';
 
-// Mock users data
-const mockUsers = [
-  { id: '1', name: 'Admin User', username: 'admin', email: 'admin@pool.com', role: 'admin' },
-  { id: '2', name: 'Pool Staff', username: 'poolstaff', email: 'pool@pool.com', role: 'pool_staff' },
-  { id: '3', name: 'Conference Staff', username: 'confstaff', email: 'conference@pool.com', role: 'conference_staff' },
-  { id: '4', name: 'Hotel Staff', username: 'hotelstaff', email: 'hotel@pool.com', role: 'hotel_staff' },
-  { id: '5', name: 'John Manager', username: 'john', email: 'john@pool.com', role: 'admin' },
-  { id: '6', name: 'Sarah Pool', username: 'sarah', email: 'sarah@pool.com', role: 'pool_staff' },
-];
+interface User {
+  _id: string;
+  name: string;
+  username: string;
+  email: string;
+  role: 'admin' | 'pool_staff' | 'conference_staff' | 'hotel_staff';
+  isActive: boolean;
+  createdAt: string;
+}
 
 const roleLabels: Record<string, string> = {
   admin: 'Admin',
@@ -47,10 +50,229 @@ const roleColors: Record<string, string> = {
 };
 
 export default function UsersPage() {
+  const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [formData, setFormData] = useState<{
+    name: string;
+    username: string;
+    email: string;
+    password: string;
+    role: User['role'];
+  }>({
+    name: '',
+    username: '',
+    email: '',
+    password: '',
+    role: 'pool_staff',
+  });
+  const [editFormData, setEditFormData] = useState<{
+    name: string;
+    email: string;
+    role: User['role'];
+    isActive: boolean;
+  }>({
+    name: '',
+    email: '',
+    role: 'pool_staff',
+    isActive: true,
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const { toast } = useToast();
+  const { authFetch } = useAuth();
 
-  const filteredUsers = mockUsers.filter((user) =>
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      const response = await authFetch('/users');
+      const data = await response.json();
+      if (data.success) {
+        setUsers(data.users);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch users',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateUser = async () => {
+    try {
+      const response = await authFetch('/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: 'Success',
+          description: 'User created successfully',
+        });
+        setIsCreateOpen(false);
+        setFormData({
+          name: '',
+          username: '',
+          email: '',
+          password: '',
+          role: 'pool_staff',
+        });
+        fetchUsers();
+      } else {
+        toast({
+          title: 'Error',
+          description: data.message || 'Failed to create user',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create user',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleEditUser = (user: User) => {
+    setSelectedUser(user);
+    setEditFormData({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive,
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleUpdateUser = async () => {
+    if (!selectedUser) return;
+
+    try {
+      const response = await authFetch(`/users/${selectedUser._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editFormData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: 'Success',
+          description: 'User updated successfully',
+        });
+        setIsEditOpen(false);
+        setSelectedUser(null);
+        fetchUsers();
+      } else {
+        toast({
+          title: 'Error',
+          description: data.message || 'Failed to update user',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update user',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!window.confirm('Are you sure you want to delete this user?')) return;
+
+    try {
+      const response = await authFetch(`/users/${userId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: 'Success',
+          description: 'User deleted successfully',
+        });
+        fetchUsers();
+      } else {
+        toast({
+          title: 'Error',
+          description: data.message || 'Failed to delete user',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete user',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleToggleStatus = async (user: User) => {
+    try {
+      const response = await authFetch(`/users/${user._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...user,
+          isActive: !user.isActive,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: 'Success',
+          description: `User ${!user.isActive ? 'activated' : 'deactivated'} successfully`,
+        });
+        fetchUsers();
+      } else {
+        toast({
+          title: 'Error',
+          description: data.message || 'Failed to update user status',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling user status:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update user status',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const filteredUsers = users.filter((user) =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.username.toLowerCase().includes(searchTerm.toLowerCase())
@@ -63,6 +285,14 @@ export default function UsersPage() {
       .join('')
       .toUpperCase();
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -94,23 +324,63 @@ export default function UsersPage() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
-                <Input id="name" placeholder="Enter full name" />
+                <Input
+                  id="name"
+                  placeholder="Enter full name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
-                <Input id="username" placeholder="Enter username" />
+                <Input
+                  id="username"
+                  placeholder="Enter username"
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="Enter email" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" placeholder="Enter password" />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role">Role</Label>
-                <Select>
+                <Select
+                  value={formData.role}
+                  onValueChange={(value) => setFormData({ ...formData, role: value as User['role'] })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
@@ -127,13 +397,85 @@ export default function UsersPage() {
               <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
                 Cancel
               </Button>
-              <Button className="gradient-admin border-0" onClick={() => setIsCreateOpen(false)}>
+              <Button className="gradient-admin border-0" onClick={handleCreateUser}>
                 Create User
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Edit User Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              Update user information and permissions.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedUser && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Full Name</Label>
+                <Input
+                  id="edit-name"
+                  placeholder="Enter full name"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">Email</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  placeholder="Enter email"
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-role">Role</Label>
+                <Select
+                  value={editFormData.role}
+                  onValueChange={(value) => setEditFormData({ ...editFormData, role: value as User['role'] })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="pool_staff">Pool Staff</SelectItem>
+                    <SelectItem value="conference_staff">Conference Staff</SelectItem>
+                    <SelectItem value="hotel_staff">Hotel Staff</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center justify-between space-y-0">
+                <Label htmlFor="edit-status">Account Status</Label>
+                <Switch
+                  id="edit-status"
+                  checked={editFormData.isActive}
+                  onCheckedChange={(checked) => setEditFormData({ ...editFormData, isActive: checked })}
+                />
+              </div>
+              <div className="text-sm text-muted-foreground">
+                <p>Username: <span className="font-medium">{selectedUser.username}</span></p>
+                <p>Created: {new Date(selectedUser.createdAt).toLocaleDateString()}</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button className="gradient-admin border-0" onClick={handleUpdateUser}>
+              Update User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Search */}
       <Card>
@@ -164,12 +506,13 @@ export default function UsersPage() {
                   <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Username</th>
                   <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Email</th>
                   <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Role</th>
+                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Status</th>
                   <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.map((user) => (
-                  <tr key={user.id} className="border-b last:border-0 hover:bg-muted/50">
+                  <tr key={user._id} className="border-b last:border-0 hover:bg-muted/50">
                     <td className="py-3 px-2">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
@@ -189,10 +532,31 @@ export default function UsersPage() {
                     </td>
                     <td className="py-3 px-2">
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <Switch
+                          checked={user.isActive}
+                          onCheckedChange={() => handleToggleStatus(user)}
+                        />
+                        <span className={`text-xs ${user.isActive ? 'text-success' : 'text-destructive'}`}>
+                          {user.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-2">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleEditUser(user)}
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteUser(user._id)}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>

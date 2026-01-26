@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,23 +28,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { InvoiceDialog } from '@/components/pool/InvoiceDialog';
-
-// Time slots configuration
-const TIME_SLOTS = [
-  { id: '1', label: '06:00 AM - 09:00 AM', value: '06:00-09:00', available: 12 },
-  { id: '2', label: '09:00 AM - 12:00 PM', value: '09:00-12:00', available: 8 },
-  { id: '3', label: '12:00 PM - 03:00 PM', value: '12:00-15:00', available: 15 },
-  { id: '4', label: '03:00 PM - 06:00 PM', value: '03:00-18:00', available: 20 },
-  { id: '5', label: '06:00 PM - 09:00 PM', value: '18:00-21:00', available: 25 },
-];
-
-const PASS_TYPES = [
-  { id: 'hourly', label: 'Hourly Pass', price: 15, description: 'Per person per hour' },
-  { id: 'daily', label: 'Daily Pass', price: 25, description: 'Full day access per person' },
-  { id: 'family', label: 'Family Pass', price: 60, description: 'Up to 4 family members' },
-];
-
-const MAX_CAPACITY = 50;
+import { usePoolService } from '@/services/poolService';
 
 const bookingSchema = z.object({
   customerName: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -55,15 +39,114 @@ const bookingSchema = z.object({
   passType: z.string({ required_error: 'Please select a pass type' }),
   persons: z.number().min(1, 'At least 1 person required').max(10, 'Maximum 10 persons per booking'),
   paymentStatus: z.enum(['paid', 'pending']),
+  notes: z.string().optional(),
 });
 
 type BookingFormData = z.infer<typeof bookingSchema>;
 
+// Hardcoded data for testing
+const HARDCODED_TICKET_PRICES = [
+  {
+    _id: '1',
+    passType: 'hourly',
+    price: 15,
+    description: 'Per person per hour',
+    maxPersons: 1,
+    isActive: true,
+    updatedAt: new Date().toISOString()
+  },
+  {
+    _id: '2',
+    passType: 'daily',
+    price: 25,
+    description: 'Full day access per person',
+    maxPersons: 1,
+    isActive: true,
+    updatedAt: new Date().toISOString()
+  },
+  {
+    _id: '3',
+    passType: 'family',
+    price: 60,
+    description: 'Up to 4 family members',
+    maxPersons: 4,
+    isActive: true,
+    updatedAt: new Date().toISOString()
+  }
+];
+
+const HARDCODED_TIME_SLOTS = [
+  {
+    _id: '1',
+    slotId: '1',
+    label: '06:00 AM - 09:00 AM',
+    value: '06:00-09:00',
+    startTime: '06:00',
+    endTime: '09:00',
+    maxCapacity: 50,
+    currentBookings: 12,
+    isActive: true,
+    available: 38
+  },
+  {
+    _id: '2',
+    slotId: '2',
+    label: '09:00 AM - 12:00 PM',
+    value: '09:00-12:00',
+    startTime: '09:00',
+    endTime: '12:00',
+    maxCapacity: 50,
+    currentBookings: 8,
+    isActive: true,
+    available: 42
+  },
+  {
+    _id: '3',
+    slotId: '3',
+    label: '12:00 PM - 03:00 PM',
+    value: '12:00-15:00',
+    startTime: '12:00',
+    endTime: '15:00',
+    maxCapacity: 50,
+    currentBookings: 15,
+    isActive: true,
+    available: 35
+  },
+  {
+    _id: '4',
+    slotId: '4',
+    label: '03:00 PM - 06:00 PM',
+    value: '15:00-18:00',
+    startTime: '15:00',
+    endTime: '18:00',
+    maxCapacity: 50,
+    currentBookings: 20,
+    isActive: true,
+    available: 30
+  },
+  {
+    _id: '5',
+    slotId: '5',
+    label: '06:00 PM - 09:00 PM',
+    value: '18:00-21:00',
+    startTime: '18:00',
+    endTime: '21:00',
+    maxCapacity: 50,
+    currentBookings: 25,
+    isActive: true,
+    available: 25
+  }
+];
+
 export default function NewPoolBooking() {
   const navigate = useNavigate();
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const poolService = usePoolService();
   const [showInvoice, setShowInvoice] = useState(false);
-  const [bookingData, setBookingData] = useState<BookingFormData | null>(null);
+  const [bookingData, setBookingData] = useState<any>(null);
+  const [ticketPrices, setTicketPrices] = useState<any[]>(HARDCODED_TICKET_PRICES);
+  const [timeSlots, setTimeSlots] = useState<any[]>(HARDCODED_TIME_SLOTS);
+  const [loading, setLoading] = useState(false);
+  const [useHardcodedData, setUseHardcodedData] = useState(false);
 
   const form = useForm<BookingFormData>({
     resolver: zodResolver(bookingSchema),
@@ -71,43 +154,177 @@ export default function NewPoolBooking() {
       customerName: '',
       email: '',
       phone: '',
-      passType: '',
+      passType: 'hourly', // Set default
       persons: 1,
       paymentStatus: 'pending',
+      notes: '',
     },
   });
 
-  const selectedPassType = PASS_TYPES.find(p => p.id === form.watch('passType'));
+  const selectedPassType = ticketPrices.find(p => p.passType === form.watch('passType'));
   const personsCount = form.watch('persons') || 1;
-  
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [pricesResponse, slotsResponse] = await Promise.all([
+        poolService.getTicketPrices(),
+        poolService.getTimeSlots()
+      ]);
+
+      if (pricesResponse.success && pricesResponse.ticketPrices && pricesResponse.ticketPrices.length > 0) {
+        setTicketPrices(pricesResponse.ticketPrices);
+        if (!form.getValues().passType) {
+          form.setValue('passType', pricesResponse.ticketPrices[0].passType);
+        }
+      } else {
+        // Use hardcoded data if API fails
+        console.log('⚠️ Using hardcoded ticket prices');
+        setUseHardcodedData(true);
+        if (!form.getValues().passType) {
+          form.setValue('passType', HARDCODED_TICKET_PRICES[0].passType);
+        }
+      }
+
+      if (slotsResponse.success && slotsResponse.timeSlots && slotsResponse.timeSlots.length > 0) {
+        setTimeSlots(slotsResponse.timeSlots);
+        if (!form.getValues().timeSlot) {
+          form.setValue('timeSlot', slotsResponse.timeSlots[0].value);
+        }
+      } else {
+        // Use hardcoded data if API fails
+        console.log('⚠️ Using hardcoded time slots');
+        setUseHardcodedData(true);
+        if (!form.getValues().timeSlot) {
+          form.setValue('timeSlot', HARDCODED_TIME_SLOTS[0].value);
+        }
+      }
+
+    } catch (error: any) {
+      console.log('⚠️ API failed, using hardcoded data');
+      setUseHardcodedData(true);
+      // Set defaults
+      if (!form.getValues().passType) {
+        form.setValue('passType', HARDCODED_TICKET_PRICES[0].passType);
+      }
+      if (!form.getValues().timeSlot) {
+        form.setValue('timeSlot', HARDCODED_TIME_SLOTS[0].value);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const calculateTotal = () => {
     if (!selectedPassType) return 0;
-    if (selectedPassType.id === 'family') {
+    if (selectedPassType.passType === 'family') {
       return selectedPassType.price;
     }
     return selectedPassType.price * personsCount;
   };
 
-  const onSubmit = (data: BookingFormData) => {
-    // Check capacity
-    const slot = TIME_SLOTS.find(s => s.value === data.timeSlot);
-    if (slot && slot.available < data.persons) {
-      toast.error(`Only ${slot.available} spots available in this slot`);
-      return;
-    }
+  const onSubmit = async (data: BookingFormData) => {
+    try {
+      // Prepare data for API
+      const apiData = {
+        customerName: data.customerName,
+        email: data.email,
+        phone: data.phone,
+        date: format(data.date, 'yyyy-MM-dd'),
+        timeSlot: data.timeSlot,
+        passType: data.passType,
+        persons: data.persons,
+        paymentStatus: data.paymentStatus,
+        notes: data.notes || '',
+      };
 
-    // In production, this would call the API
-    console.log('Booking submitted:', data);
-    
-    setBookingData(data);
-    setShowInvoice(true);
-    toast.success('Booking created successfully!');
+      // If using hardcoded data, create mock response
+      if (useHardcodedData) {
+        // Create mock booking
+        const mockBooking = {
+          _id: `booking-${Date.now()}`,
+          bookingNumber: `PB-${Date.now().toString().slice(-6)}`,
+          customerName: data.customerName,
+          email: data.email,
+          phone: data.phone,
+          date: format(data.date, 'yyyy-MM-dd'),
+          timeSlot: data.timeSlot,
+          passType: data.passType,
+          persons: data.persons,
+          amount: calculateTotal(),
+          paymentStatus: data.paymentStatus,
+          notes: data.notes || '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        setBookingData(mockBooking);
+        setShowInvoice(true);
+        toast.success('Booking created successfully! (Demo Mode)');
+
+        // Reset form
+        form.reset({
+          customerName: '',
+          email: '',
+          phone: '',
+          date: data.date,
+          timeSlot: data.timeSlot,
+          passType: data.passType,
+          persons: 1,
+          paymentStatus: 'pending',
+          notes: '',
+        });
+
+        return;
+      }
+
+      // Try real API call
+      const response = await poolService.createBooking(apiData);
+
+      if (response.success) {
+        setBookingData(response.booking);
+        setShowInvoice(true);
+        toast.success('Booking created successfully!');
+
+        // Reset form
+        form.reset({
+          customerName: '',
+          email: '',
+          phone: '',
+          date: data.date,
+          timeSlot: data.timeSlot,
+          passType: data.passType,
+          persons: 1,
+          paymentStatus: 'pending',
+          notes: '',
+        });
+      } else {
+        toast.error(response.message || 'Failed to create booking');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create booking');
+    }
   };
 
   const handleInvoiceClose = () => {
     setShowInvoice(false);
     navigate('/pool/bookings');
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading booking form...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -124,6 +341,11 @@ export default function NewPoolBooking() {
             <h1 className="text-3xl font-bold">New Pool Booking</h1>
           </div>
           <p className="text-muted-foreground mt-1">Create a new pool booking</p>
+          {useHardcodedData && (
+            <div className="mt-2 text-sm text-amber-600 bg-amber-50 px-3 py-1 rounded inline-flex items-center gap-1">
+              ⚠️ Using demo data
+            </div>
+          )}
         </div>
       </div>
 
@@ -180,6 +402,19 @@ export default function NewPoolBooking() {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Any special requirements..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </CardContent>
             </Card>
 
@@ -202,12 +437,12 @@ export default function NewPoolBooking() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Time Slot</span>
                     <span className="font-medium">
-                      {TIME_SLOTS.find(s => s.value === form.watch('timeSlot'))?.label || '-'}
+                      {timeSlots.find(s => s.value === form.watch('timeSlot'))?.label || '-'}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Pass Type</span>
-                    <span className="font-medium">{selectedPassType?.label || '-'}</span>
+                    <span className="font-medium">{selectedPassType?.description || '-'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Persons</span>
@@ -248,7 +483,7 @@ export default function NewPoolBooking() {
                 />
 
                 <Button type="submit" className="w-full gradient-pool border-0">
-                  Create Booking
+                  {useHardcodedData ? 'Create Demo Booking' : 'Create Booking'}
                 </Button>
               </CardContent>
             </Card>
@@ -305,9 +540,9 @@ export default function NewPoolBooking() {
                     <FormItem>
                       <FormLabel>Select Time Slot</FormLabel>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {TIME_SLOTS.map((slot) => (
+                        {timeSlots.map((slot) => (
                           <div
-                            key={slot.id}
+                            key={slot._id}
                             className={cn(
                               'p-4 rounded-lg border-2 cursor-pointer transition-all',
                               field.value === slot.value
@@ -318,7 +553,6 @@ export default function NewPoolBooking() {
                             onClick={() => {
                               if (slot.available > 0) {
                                 field.onChange(slot.value);
-                                setSelectedSlot(slot.value);
                               }
                             }}
                           >
@@ -358,18 +592,18 @@ export default function NewPoolBooking() {
                     <FormItem>
                       <FormLabel>Pass Type</FormLabel>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {PASS_TYPES.map((pass) => (
+                        {ticketPrices.map((pass) => (
                           <div
-                            key={pass.id}
+                            key={pass._id}
                             className={cn(
                               'p-4 rounded-lg border-2 cursor-pointer transition-all text-center',
-                              field.value === pass.id
+                              field.value === pass.passType
                                 ? 'border-pool bg-pool-light'
                                 : 'border-border hover:border-pool/50'
                             )}
-                            onClick={() => field.onChange(pass.id)}
+                            onClick={() => field.onChange(pass.passType)}
                           >
-                            <p className="font-semibold">{pass.label}</p>
+                            <p className="font-semibold">{pass.passType.charAt(0).toUpperCase() + pass.passType.slice(1)} Pass</p>
                             <p className="text-2xl font-bold text-pool mt-1">${pass.price}</p>
                             <p className="text-xs text-muted-foreground mt-1">{pass.description}</p>
                           </div>
@@ -401,13 +635,13 @@ export default function NewPoolBooking() {
                           type="button"
                           variant="outline"
                           size="icon"
-                          onClick={() => field.onChange(Math.min(10, (field.value || 1) + 1))}
-                          disabled={field.value >= 10}
+                          onClick={() => field.onChange(Math.min(selectedPassType?.maxPersons || 10, (field.value || 1) + 1))}
+                          disabled={field.value >= (selectedPassType?.maxPersons || 10)}
                         >
                           +
                         </Button>
                         <span className="text-sm text-muted-foreground ml-2">
-                          (Max 10 per booking)
+                          (Max {selectedPassType?.maxPersons || 10} per booking)
                         </span>
                       </div>
                       <FormMessage />
@@ -420,7 +654,8 @@ export default function NewPoolBooking() {
                   <div>
                     <p className="text-sm font-medium">Pool Capacity</p>
                     <p className="text-xs text-muted-foreground">
-                      Current: 42/{MAX_CAPACITY} | Available: {MAX_CAPACITY - 42} spots
+                      Total Capacity: {timeSlots.reduce((sum, slot) => sum + slot.maxCapacity, 0)} |
+                      Available: {timeSlots.reduce((sum, slot) => sum + slot.available, 0)} spots
                     </p>
                   </div>
                 </div>
@@ -436,15 +671,15 @@ export default function NewPoolBooking() {
           open={showInvoice}
           onClose={handleInvoiceClose}
           booking={{
-            id: `PB-${Date.now()}`,
+            id: bookingData.bookingNumber || `PB-${Date.now().toString().slice(-6)}`,
             customerName: bookingData.customerName,
             email: bookingData.email,
             phone: bookingData.phone,
-            date: format(bookingData.date, 'PPP'),
-            timeSlot: TIME_SLOTS.find(s => s.value === bookingData.timeSlot)?.label || '',
-            passType: PASS_TYPES.find(p => p.id === bookingData.passType)?.label || '',
+            date: format(new Date(bookingData.date), 'PPP'),
+            timeSlot: timeSlots.find(s => s.value === bookingData.timeSlot)?.label || bookingData.timeSlot,
+            passType: ticketPrices.find(p => p.passType === bookingData.passType)?.description || bookingData.passType,
             persons: bookingData.persons,
-            amount: calculateTotal(),
+            amount: bookingData.amount,
             paymentStatus: bookingData.paymentStatus,
           }}
         />

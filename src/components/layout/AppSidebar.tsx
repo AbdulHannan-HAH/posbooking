@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth, UserRole } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext'; // ✅ Remove UserRole from import
 import {
   Sidebar,
   SidebarContent,
@@ -26,10 +26,13 @@ import {
   FileText,
   BedDouble,
   CalendarCheck,
-  UserPlus,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { Button } from '@/components/ui/button';
+import { Settings } from 'lucide-react';
+
+// ✅ Define UserRole locally
+type UserRole = 'admin' | 'pool_staff' | 'conference_staff' | 'hotel_staff';
 
 interface MenuItem {
   title: string;
@@ -55,6 +58,7 @@ const menuGroups: MenuGroup[] = [
       },
     ],
   },
+  // In the Pool Management group, add Settings:
   {
     label: 'Pool Management',
     items: [
@@ -75,6 +79,12 @@ const menuGroups: MenuGroup[] = [
         url: '/pool/reports',
         icon: FileText,
         roles: ['admin', 'pool_staff'],
+      },
+      {
+        title: 'Settings',
+        url: '/pool/settings',
+        icon: Settings, // Add this import: 
+        roles: ['admin'], // Only admin can access settings
       },
     ],
   },
@@ -157,7 +167,7 @@ export function AppSidebar() {
     .map((group) => ({
       ...group,
       items: group.items.filter((item) =>
-        user ? item.roles.includes(user.role) : false
+        user ? item.roles.includes(user.role as UserRole) : false
       ),
     }))
     .filter((group) => group.items.length > 0);
@@ -191,11 +201,10 @@ export function AppSidebar() {
                       <SidebarMenuButton asChild>
                         <NavLink
                           to={item.url}
-                          className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                            isActive
-                              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                              : 'text-sidebar-muted hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
-                          }`}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${isActive
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                            : 'text-sidebar-muted hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                            }`}
                         >
                           <item.icon className="h-4 w-4" />
                           <span>{item.title}</span>

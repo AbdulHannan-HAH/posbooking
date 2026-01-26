@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { StatCard } from '@/components/ui/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,15 +11,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  Waves, 
-  DollarSign, 
-  Users, 
-  TrendingUp, 
-  CalendarIcon, 
+import {
+  Waves,
+  DollarSign,
+  Users,
+  TrendingUp,
+  CalendarIcon,
   Download,
   FileText,
-  BarChart3
+  BarChart3,
+  Loader2
 } from 'lucide-react';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -38,51 +39,115 @@ import {
   Cell,
   Legend,
 } from 'recharts';
-
-// Mock data for reports
-const dailyRevenueData = [
-  { day: 'Mon', revenue: 1200, bookings: 28 },
-  { day: 'Tue', revenue: 980, bookings: 22 },
-  { day: 'Wed', revenue: 1450, bookings: 35 },
-  { day: 'Thu', revenue: 1100, bookings: 26 },
-  { day: 'Fri', revenue: 1680, bookings: 42 },
-  { day: 'Sat', revenue: 2100, bookings: 55 },
-  { day: 'Sun', revenue: 1890, bookings: 48 },
-];
-
-const monthlyData = [
-  { month: 'Jan', revenue: 28500, bookings: 680 },
-  { month: 'Feb', revenue: 31200, bookings: 745 },
-  { month: 'Mar', revenue: 35800, bookings: 856 },
-  { month: 'Apr', revenue: 42100, bookings: 1002 },
-  { month: 'May', revenue: 48500, bookings: 1156 },
-  { month: 'Jun', revenue: 55200, bookings: 1320 },
-];
-
-const passTypeData = [
-  { name: 'Daily Pass', value: 45, color: 'hsl(var(--pool))' },
-  { name: 'Hourly Pass', value: 35, color: 'hsl(var(--conference))' },
-  { name: 'Family Pass', value: 20, color: 'hsl(var(--hotel))' },
-];
-
-const timeSlotData = [
-  { slot: '06:00-09:00', visitors: 120, revenue: 1800 },
-  { slot: '09:00-12:00', visitors: 280, revenue: 4200 },
-  { slot: '12:00-15:00', visitors: 350, revenue: 5250 },
-  { slot: '15:00-18:00', visitors: 290, revenue: 4350 },
-  { slot: '18:00-21:00', visitors: 180, revenue: 2700 },
-];
+import { usePoolService } from '@/services/poolService';
+import { toast } from 'sonner';
 
 export default function PoolReports() {
+  const poolService = usePoolService();
   const [dateRange, setDateRange] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 7));
   const [endDate, setEndDate] = useState<Date>(new Date());
+  const [loading, setLoading] = useState(false);
+  const [revenueData, setRevenueData] = useState<any[]>([]);
+  const [passTypeData, setPassTypeData] = useState<any[]>([]);
+  const [timeSlotData, setTimeSlotData] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchReports();
+  }, [startDate, endDate, dateRange]);
+
+  const fetchReports = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        startDate: format(startDate, 'yyyy-MM-dd'),
+        endDate: format(endDate, 'yyyy-MM-dd'),
+        groupBy: dateRange
+      };
+
+      const response = await poolService.getReports(params);
+
+      if (response.success) {
+        // Process revenue data
+        const processedRevenueData = response.revenueData?.map((item: any) => {
+          let label = '';
+          switch (dateRange) {
+            case 'daily':
+              label = format(new Date(item._id), 'EEE');
+              break;
+            case 'weekly':
+              label = `Week ${item._id}`;
+              break;
+            case 'monthly':
+              label = format(new Date(item._id), 'MMM');
+              break;
+          }
+          return {
+            label,
+            revenue: item.revenue,
+            bookings: item.bookings,
+            visitors: item.visitors
+          };
+        }) || [];
+
+        // Process pass type data
+        const processedPassTypeData = response.passTypeData?.map((item: any) => {
+          const typeMap: Record<string, string> = {
+            'hourly': 'Hourly Pass',
+            'daily': 'Daily Pass',
+            'family': 'Family Pass'
+          };
+          const colors = [
+            'hsl(var(--pool))',
+            'hsl(var(--conference))',
+            'hsl(var(--hotel))'
+          ];
+          const index = Object.keys(typeMap).indexOf(item._id);
+
+          return {
+            name: typeMap[item._id] || item._id,
+            value: item.count,
+            revenue: item.revenue,
+            color: colors[index] || 'hsl(var(--muted-foreground))'
+          };
+        }) || [];
+
+        // Process time slot data
+        const processedTimeSlotData = response.timeSlotData?.map((item: any) => {
+          const timeMap: Record<string, string> = {
+            '06:00-09:00': '06:00-09:00',
+            '09:00-12:00': '09:00-12:00',
+            '12:00-15:00': '12:00-15:00',
+            '15:00-18:00': '15:00-18:00',
+            '18:00-21:00': '18:00-21:00',
+          };
+
+          return {
+            slot: timeMap[item._id] || item._id,
+            visitors: item.visitors,
+            revenue: item.revenue,
+            bookings: item.bookings
+          };
+        }).sort((a: any, b: any) => a.slot.localeCompare(b.slot)) || [];
+
+        setRevenueData(processedRevenueData);
+        setPassTypeData(processedPassTypeData);
+        setTimeSlotData(processedTimeSlotData);
+      } else {
+        toast.error(response.message || 'Failed to load reports');
+      }
+    } catch (error: any) {
+      console.error('Error fetching reports:', error);
+      toast.error('Failed to load reports');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleExportCSV = () => {
-    // In production, this would generate and download a CSV file
-    const csvContent = 'Date,Bookings,Revenue\n' + 
-      dailyRevenueData.map(d => `${d.day},${d.bookings},${d.revenue}`).join('\n');
-    
+    const csvContent = 'Date,Bookings,Revenue,Visitors\n' +
+      revenueData.map(d => `${d.label},${d.bookings},${d.revenue},${d.visitors}`).join('\n');
+
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -93,13 +158,13 @@ export default function PoolReports() {
   };
 
   const handleExportPDF = () => {
-    // In production, this would generate a proper PDF
     window.print();
   };
 
-  const totalRevenue = dailyRevenueData.reduce((sum, d) => sum + d.revenue, 0);
-  const totalBookings = dailyRevenueData.reduce((sum, d) => sum + d.bookings, 0);
-  const avgRevenuePerBooking = totalRevenue / totalBookings;
+  const totalRevenue = revenueData.reduce((sum, d) => sum + d.revenue, 0);
+  const totalBookings = revenueData.reduce((sum, d) => sum + d.bookings, 0);
+  const totalVisitors = revenueData.reduce((sum, d) => sum + d.visitors, 0);
+  const avgRevenuePerBooking = totalBookings > 0 ? totalRevenue / totalBookings : 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -115,11 +180,11 @@ export default function PoolReports() {
           <p className="text-muted-foreground mt-1">View pool usage statistics and revenue reports</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportCSV}>
+          <Button variant="outline" onClick={handleExportCSV} disabled={loading}>
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
-          <Button variant="outline" onClick={handleExportPDF}>
+          <Button variant="outline" onClick={handleExportPDF} disabled={loading}>
             <FileText className="h-4 w-4 mr-2" />
             Export PDF
           </Button>
@@ -178,205 +243,251 @@ export default function PoolReports() {
         </CardContent>
       </Card>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Revenue"
-          value={`$${totalRevenue.toLocaleString()}`}
-          change="+18% from last period"
-          changeType="positive"
-          icon={DollarSign}
-          iconClassName="gradient-pool"
-        />
-        <StatCard
-          title="Total Bookings"
-          value={totalBookings}
-          change="+12% from last period"
-          changeType="positive"
-          icon={Waves}
-          iconClassName="gradient-conference"
-        />
-        <StatCard
-          title="Total Visitors"
-          value="1,220"
-          change="+8% from last period"
-          changeType="positive"
-          icon={Users}
-          iconClassName="gradient-hotel"
-        />
-        <StatCard
-          title="Avg. Revenue/Booking"
-          value={`$${avgRevenuePerBooking.toFixed(2)}`}
-          change="+5% from average"
-          changeType="positive"
-          icon={TrendingUp}
-          iconClassName="bg-success/20"
-        />
-      </div>
-
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Revenue Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dailyRevenueData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="day" className="text-xs" />
-                  <YAxis className="text-xs" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Bar dataKey="revenue" fill="hsl(var(--pool))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Bookings Trend */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Booking Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dailyRevenueData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="day" className="text-xs" />
-                  <YAxis className="text-xs" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="bookings" 
-                    stroke="hsl(var(--pool))" 
-                    strokeWidth={2}
-                    dot={{ fill: 'hsl(var(--pool))' }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Pass Type Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Pass Type Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={passTypeData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}%`}
-                  >
-                    {passTypeData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Time Slot Analysis */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Time Slot Analysis</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={timeSlotData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis type="number" className="text-xs" />
-                  <YAxis dataKey="slot" type="category" className="text-xs" width={80} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Bar dataKey="visitors" fill="hsl(var(--pool))" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Monthly Summary Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Monthly Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Month</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Bookings</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Revenue</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Avg/Booking</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Growth</th>
-                </tr>
-              </thead>
-              <tbody>
-                {monthlyData.map((month, index) => {
-                  const prevRevenue = index > 0 ? monthlyData[index - 1].revenue : month.revenue;
-                  const growth = ((month.revenue - prevRevenue) / prevRevenue * 100).toFixed(1);
-                  return (
-                    <tr key={month.month} className="border-b last:border-0 hover:bg-muted/50">
-                      <td className="py-3 px-4 font-medium">{month.month}</td>
-                      <td className="py-3 px-4">{month.bookings.toLocaleString()}</td>
-                      <td className="py-3 px-4 font-medium">${month.revenue.toLocaleString()}</td>
-                      <td className="py-3 px-4">${(month.revenue / month.bookings).toFixed(2)}</td>
-                      <td className="py-3 px-4">
-                        <span className={cn(
-                          'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
-                          parseFloat(growth) >= 0 
-                            ? 'bg-success/20 text-success' 
-                            : 'bg-destructive/20 text-destructive'
-                        )}>
-                          {parseFloat(growth) >= 0 ? '+' : ''}{growth}%
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="mt-4 text-muted-foreground">Loading reports...</p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      ) : (
+        <>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              title="Total Revenue"
+              value={`$${totalRevenue.toLocaleString()}`}
+              change={`${revenueData.length > 1 ? 'From period' : 'Current period'}`}
+              changeType="positive"
+              icon={DollarSign}
+              iconClassName="gradient-pool"
+            />
+            <StatCard
+              title="Total Bookings"
+              value={totalBookings}
+              change={`${revenueData.length > 1 ? 'From period' : 'Current period'}`}
+              changeType="positive"
+              icon={Waves}
+              iconClassName="gradient-conference"
+            />
+            <StatCard
+              title="Total Visitors"
+              value={totalVisitors}
+              change={`${revenueData.length > 1 ? 'From period' : 'Current period'}`}
+              changeType="positive"
+              icon={Users}
+              iconClassName="gradient-hotel"
+            />
+            <StatCard
+              title="Avg. Revenue/Booking"
+              value={`$${avgRevenuePerBooking.toFixed(2)}`}
+              change="Current period average"
+              changeType="neutral"
+              icon={TrendingUp}
+              iconClassName="bg-success/20"
+            />
+          </div>
+
+          {/* Charts Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Revenue Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Revenue Trend</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  {revenueData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={revenueData}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="label" className="text-xs" />
+                        <YAxis className="text-xs" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px'
+                          }}
+                        />
+                        <Bar dataKey="revenue" fill="hsl(var(--pool))" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                      No data available for selected period
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Bookings Trend */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Booking Trend</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  {revenueData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={revenueData}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="label" className="text-xs" />
+                        <YAxis className="text-xs" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px'
+                          }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="bookings"
+                          stroke="hsl(var(--pool))"
+                          strokeWidth={2}
+                          dot={{ fill: 'hsl(var(--pool))' }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                      No data available for selected period
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Pass Type Distribution */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Pass Type Distribution</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  {passTypeData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={passTypeData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          paddingAngle={5}
+                          dataKey="value"
+                          label={({ name, value }) => `${name}: ${value}`}
+                        >
+                          {passTypeData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value, name, props) => [
+                            value,
+                            `${props.payload.name}: $${props.payload.revenue}`
+                          ]}
+                        />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                      No pass type data available
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Time Slot Analysis */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Time Slot Analysis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  {timeSlotData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={timeSlotData} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis type="number" className="text-xs" />
+                        <YAxis dataKey="slot" type="category" className="text-xs" width={80} />
+                        <Tooltip
+                          formatter={(value, name, props) => {
+                            if (name === 'visitors') {
+                              return [value, 'Visitors'];
+                            }
+                            return value;
+                          }}
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px'
+                          }}
+                        />
+                        <Bar dataKey="visitors" fill="hsl(var(--pool))" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                      No time slot data available
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Summary Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Detailed Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {revenueData.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Period</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Bookings</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Visitors</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Revenue</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Avg/Booking</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {revenueData.map((row, index) => (
+                        <tr key={index} className="border-b last:border-0 hover:bg-muted/50">
+                          <td className="py-3 px-4 font-medium">{row.label}</td>
+                          <td className="py-3 px-4">{row.bookings}</td>
+                          <td className="py-3 px-4">{row.visitors}</td>
+                          <td className="py-3 px-4 font-medium">${row.revenue.toLocaleString()}</td>
+                          <td className="py-3 px-4">${(row.revenue / row.bookings).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                      <tr className="border-t font-bold">
+                        <td className="py-3 px-4">Total</td>
+                        <td className="py-3 px-4">{totalBookings}</td>
+                        <td className="py-3 px-4">{totalVisitors}</td>
+                        <td className="py-3 px-4 text-pool">${totalRevenue.toLocaleString()}</td>
+                        <td className="py-3 px-4">${avgRevenuePerBooking.toFixed(2)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No data available for selected period
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }

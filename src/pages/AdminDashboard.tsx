@@ -28,18 +28,31 @@ const moduleStats = {
 };
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
 
-  // Redirect staff to their respective dashboards
-  if (user?.role === 'pool_staff') {
-    return <Navigate to="/pool" replace />;
+  console.log('🏠 AdminDashboard - Loading:', isLoading);
+  console.log('🏠 AdminDashboard - User:', user);
+  console.log('🏠 AdminDashboard - User Role:', user?.role);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
   }
-  if (user?.role === 'conference_staff') {
-    return <Navigate to="/conference" replace />;
+
+  // Redirect to login if not authenticated
+  if (!user) {
+    console.log('🔒 No user, redirecting to login');
+    return <Navigate to="/login" replace />;
   }
-  if (user?.role === 'hotel_staff') {
-    return <Navigate to="/hotel" replace />;
-  }
+
+  // REMOVED all redirect logic - ProtectedRoute handles role checking
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -48,6 +61,9 @@ export default function AdminDashboard() {
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">
           Welcome back, {user?.name}. Here's what's happening today.
+          <span className="ml-2 text-xs px-2 py-1 bg-primary/10 text-primary rounded">
+            Role: {user?.role}
+          </span>
         </p>
       </div>
 
@@ -145,11 +161,10 @@ export default function AdminDashboard() {
                 </div>
                 <div className="text-right">
                   <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      booking.status === 'paid'
-                        ? 'bg-success-light text-success'
-                        : 'bg-pending-light text-pending'
-                    }`}
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${booking.status === 'paid'
+                      ? 'bg-success-light text-success'
+                      : 'bg-pending-light text-pending'
+                      }`}
                   >
                     {booking.status}
                   </span>
