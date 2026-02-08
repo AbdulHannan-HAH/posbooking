@@ -1,5 +1,6 @@
+// components/layout/AppSidebar.tsx
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext'; // ✅ Remove UserRole from import
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Sidebar,
   SidebarContent,
@@ -26,12 +27,11 @@ import {
   FileText,
   BedDouble,
   CalendarCheck,
+  Settings,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { Button } from '@/components/ui/button';
-import { Settings } from 'lucide-react';
 
-// ✅ Define UserRole locally
 type UserRole = 'admin' | 'pool_staff' | 'conference_staff' | 'hotel_staff';
 
 interface MenuItem {
@@ -58,7 +58,6 @@ const menuGroups: MenuGroup[] = [
       },
     ],
   },
-  // In the Pool Management group, add Settings:
   {
     label: 'Pool Management',
     items: [
@@ -83,8 +82,8 @@ const menuGroups: MenuGroup[] = [
       {
         title: 'Settings',
         url: '/pool/settings',
-        icon: Settings, // Add this import: 
-        roles: ['admin'], // Only admin can access settings
+        icon: Settings,
+        roles: ['admin'],
       },
     ],
   },
@@ -98,26 +97,38 @@ const menuGroups: MenuGroup[] = [
         roles: ['admin', 'conference_staff'],
       },
       {
-        title: 'Booking Requests',
+        title: 'Bookings',
         url: '/conference/bookings',
         icon: ClipboardList,
         roles: ['admin', 'conference_staff'],
       },
       {
-        title: 'Invoices',
-        url: '/conference/invoices',
-        icon: CreditCard,
+        title: 'Reports',
+        url: '/conference/reports',
+        icon: FileText,
         roles: ['admin', 'conference_staff'],
+      },
+      {
+        title: 'Settings',
+        url: '/conference/settings',
+        icon: Settings,
+        roles: ['admin'],
       },
     ],
   },
   {
-    label: 'Hotel',
+    label: 'Hotel Management',
     items: [
       {
         title: 'Hotel Dashboard',
         url: '/hotel',
         icon: Hotel,
+        roles: ['admin', 'hotel_staff'],
+      },
+      {
+        title: 'Reservations',
+        url: '/hotel/reservations',
+        icon: CalendarCheck,
         roles: ['admin', 'hotel_staff'],
       },
       {
@@ -127,10 +138,16 @@ const menuGroups: MenuGroup[] = [
         roles: ['admin', 'hotel_staff'],
       },
       {
-        title: 'Reservations',
-        url: '/hotel/reservations',
-        icon: CalendarCheck,
+        title: 'Reports',
+        url: '/hotel/reports',
+        icon: FileText,
         roles: ['admin', 'hotel_staff'],
+      },
+      {
+        title: 'Settings',
+        url: '/hotel/settings',
+        icon: Settings,
+        roles: ['admin'],
       },
     ],
   },
@@ -180,7 +197,7 @@ export function AppSidebar() {
             <Waves className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-sidebar-foreground">POOL</h1>
+            <h1 className="text-lg font-bold text-sidebar-foreground">HMS Pro</h1>
             <p className="text-xs text-sidebar-muted">Management System</p>
           </div>
         </div>
@@ -195,7 +212,8 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => {
-                  const isActive = location.pathname === item.url;
+                  const isActive = location.pathname === item.url ||
+                    location.pathname.startsWith(item.url + '/');
                   return (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton asChild>
@@ -220,14 +238,20 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4">
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-3 text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent"
-          onClick={handleLogout}
-        >
-          <LogOut className="h-4 w-4" />
-          <span>Logout</span>
-        </Button>
+        <div className="flex flex-col gap-4">
+          <div className="px-3 text-xs text-sidebar-muted">
+            <p className="font-medium">{user?.name}</p>
+            <p className="capitalize">{user?.role?.replace('_', ' ')}</p>
+          </div>
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Logout</span>
+          </Button>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

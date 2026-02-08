@@ -1,3 +1,4 @@
+// App.tsx
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,16 +13,35 @@ import PoolBookings from "./pages/pool/PoolBookings";
 import NewPoolBooking from "./pages/pool/NewPoolBooking";
 import ViewPoolBooking from "./pages/pool/ViewPoolBooking";
 import PoolReports from "./pages/pool/PoolReports";
+import PoolSettings from "./pages/pool/PoolSettings";
 import ConferenceDashboard from "./pages/conference/ConferenceDashboard";
+import ConferenceBookings from "./pages/conference/ConferenceBookings";
+import NewConferenceBooking from "./pages/conference/NewConferenceBooking";
+import ViewConferenceBooking from "./pages/conference/ViewConferenceBooking";
+import ConferenceReports from "./pages/conference/ConferenceReports";
+import ConferenceSettings from "./pages/conference/ConferenceSettings";
 import HotelDashboard from "./pages/hotel/HotelDashboard";
+import HotelReservations from "./pages/hotel/HotelReservations";
+import NewHotelReservation from "./pages/hotel/NewHotelReservation";
+import ViewHotelReservation from "./pages/hotel/ViewHotelReservation";
+import HotelReports from "./pages/hotel/HotelReports";
+import HotelSettings from "./pages/hotel/HotelSettings";
 import UsersPage from "./pages/users/UsersPage";
 import AnalyticsPage from "./pages/analytics/AnalyticsPage";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
-import PoolSettings from "./pages/pool/PoolSettings";
+import HotelRooms from "./pages/hotel/HotelRooms";
 
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -41,11 +61,6 @@ const App = () => (
               <Route path="/dashboard" element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminDashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/pool/settings" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <PoolSettings />
                 </ProtectedRoute>
               } />
 
@@ -75,6 +90,11 @@ const App = () => (
                   <PoolReports />
                 </ProtectedRoute>
               } />
+              <Route path="/pool/settings" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <PoolSettings />
+                </ProtectedRoute>
+              } />
 
               {/* Conference Routes - Accessible by admin and conference_staff */}
               <Route path="/conference" element={
@@ -82,11 +102,66 @@ const App = () => (
                   <ConferenceDashboard />
                 </ProtectedRoute>
               } />
+              <Route path="/conference/bookings" element={
+                <ProtectedRoute allowedRoles={['admin', 'conference_staff']}>
+                  <ConferenceBookings />
+                </ProtectedRoute>
+              } />
+              <Route path="/conference/bookings/new" element={
+                <ProtectedRoute allowedRoles={['admin', 'conference_staff']}>
+                  <NewConferenceBooking />
+                </ProtectedRoute>
+              } />
+              <Route path="/conference/bookings/:id" element={
+                <ProtectedRoute allowedRoles={['admin', 'conference_staff']}>
+                  <ViewConferenceBooking />
+                </ProtectedRoute>
+              } />
+              <Route path="/conference/reports" element={
+                <ProtectedRoute allowedRoles={['admin', 'conference_staff']}>
+                  <ConferenceReports />
+                </ProtectedRoute>
+              } />
+              <Route path="/conference/settings" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <ConferenceSettings />
+                </ProtectedRoute>
+              } />
 
               {/* Hotel Routes - Accessible by admin and hotel_staff */}
               <Route path="/hotel" element={
                 <ProtectedRoute allowedRoles={['admin', 'hotel_staff']}>
                   <HotelDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/hotel/reservations" element={
+                <ProtectedRoute allowedRoles={['admin', 'hotel_staff']}>
+                  <HotelReservations />
+                </ProtectedRoute>
+              } />
+              <Route path="/hotel/reservations/new" element={
+                <ProtectedRoute allowedRoles={['admin', 'hotel_staff']}>
+                  <NewHotelReservation />
+                </ProtectedRoute>
+              } />
+              <Route path="/hotel/reservations/:id" element={
+                <ProtectedRoute allowedRoles={['admin', 'hotel_staff']}>
+                  <ViewHotelReservation />
+                </ProtectedRoute>
+              } />
+              <Route path="/hotel/rooms" element={
+                <ProtectedRoute allowedRoles={['admin', 'hotel_staff']}>
+                  <HotelRooms />
+                </ProtectedRoute>
+              } />
+              <Route path="/hotel/reports" element={
+                <ProtectedRoute allowedRoles={['admin', 'hotel_staff']}>
+                  <HotelReports />
+                </ProtectedRoute>
+              } />
+              <Route path="/hotel/settings" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <HotelSettings />
                 </ProtectedRoute>
               } />
 
@@ -102,14 +177,6 @@ const App = () => (
                 </ProtectedRoute>
               } />
             </Route>
-
-
-            // Add to protected routes
-            <Route path="/pool/settings" element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <PoolSettings />
-              </ProtectedRoute>
-            } />
 
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />
