@@ -160,12 +160,7 @@ const menuGroups: MenuGroup[] = [
         icon: Users,
         roles: ['admin'],
       },
-      {
-        title: 'Analytics',
-        url: '/analytics',
-        icon: BarChart3,
-        roles: ['admin'],
-      },
+
     ],
   },
 ];
