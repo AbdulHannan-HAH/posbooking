@@ -56,7 +56,7 @@ export default function Login() {
               <Waves className="h-8 w-8 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold text-primary-foreground">POOL</h1>
+              <h1 className="text-4xl font-bold text-primary-foreground">Booking</h1>
               <p className="text-primary-foreground/70">Management System</p>
             </div>
           </div>
@@ -75,7 +75,6 @@ export default function Login() {
                 <Waves className="h-5 w-5 text-primary-foreground" />
               </div>
               <p className="text-primary-foreground font-medium">Pool</p>
-              <p className="text-primary-foreground/60 text-sm">50+ bookings/day</p>
             </div>
             <div className="bg-primary-foreground/10 rounded-xl p-4 backdrop-blur">
               <div className="h-10 w-10 rounded-lg gradient-conference flex items-center justify-center mb-3">
@@ -83,8 +82,7 @@ export default function Login() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
               </div>
-              <p className="text-primary-foreground font-medium">Conference</p>
-              <p className="text-primary-foreground/60 text-sm">5 halls available</p>
+              <p className="text-primary-foreground font-medium">Conference Hall</p>
             </div>
             <div className="bg-primary-foreground/10 rounded-xl p-4 backdrop-blur">
               <div className="h-10 w-10 rounded-lg gradient-hotel flex items-center justify-center mb-3">
@@ -93,7 +91,6 @@ export default function Login() {
                 </svg>
               </div>
               <p className="text-primary-foreground font-medium">Hotel</p>
-              <p className="text-primary-foreground/60 text-sm">120 rooms</p>
             </div>
           </div>
         </div>
@@ -178,18 +175,7 @@ export default function Login() {
               </form>
 
               {/* Demo credentials - Update with your actual credentials */}
-              <div className="mt-6 p-4 bg-muted rounded-lg">
-                <p className="text-sm font-medium mb-2">Demo Credentials:</p>
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <p><span className="font-medium">Admin:</span> admin / admin123</p>
-                  <p><span className="font-medium">Pool Staff:</span> poolstaff / pool123</p>
-                  <p><span className="font-medium">Conference:</span> confstaff / conf123</p>
-                  <p><span className="font-medium">Hotel:</span> hotelstaff / hotel123</p>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Note: Default users are created automatically on first startup
-                </p>
-              </div>
+
             </CardContent>
           </Card>
         </div>
