@@ -81,7 +81,7 @@ export default function ConferenceDashboard() {
             </div>
             <h1 className="text-3xl font-bold">Conference Dashboard</h1>
           </div>
-          <p className="text-muted-foreground mt-1">Manage conference hall bookings and events</p>
+          <p className="text-muted-foreground mt-1">Wuo Garbee Tarpia Conference Hall</p>
         </div>
         <Link to="/conference/bookings/new">
           <Button className="gradient-conference border-0">

@@ -56,8 +56,8 @@ export default function Login() {
               <Waves className="h-8 w-8 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold text-primary-foreground">Booking</h1>
-              <p className="text-primary-foreground/70">Management System</p>
+              <h1 className="text-4xl font-bold text-primary-foreground">Peace</h1>
+              <p className="text-primary-foreground/70">Welcome to Peace Empire Hotel, Pool, Conference/Villas POS</p>
             </div>
           </div>
           <h2 className="text-3xl font-bold text-primary-foreground mb-4">
@@ -99,14 +99,16 @@ export default function Login() {
       {/* Right Panel - Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background">
         <div className="w-full max-w-md">
-          {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-            <div className="h-12 w-12 rounded-xl gradient-pool flex items-center justify-center">
-              <Waves className="h-6 w-6 text-primary-foreground" />
+          {/* Mobile Logo with same heading */}
+          <div className="lg:hidden flex flex-col items-center gap-3 mb-8 text-center">
+            <div className="h-16 w-16 rounded-xl gradient-pool flex items-center justify-center">
+              <Waves className="h-8 w-8 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">POOL</h1>
-              <p className="text-xs text-muted-foreground">Management System</p>
+              <h1 className="text-2xl font-bold">Peace</h1>
+              <p className="text-sm text-muted-foreground max-w-[280px]">
+                Welcome to Peace Empire Hotel, Pool, Conference/Villas POS
+              </p>
             </div>
           </div>
 
