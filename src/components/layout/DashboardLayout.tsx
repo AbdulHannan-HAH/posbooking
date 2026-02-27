@@ -58,6 +58,8 @@ export function DashboardLayout() {
         return 'Conference Staff';
       case 'hotel_staff':
         return 'Hotel Staff';
+      case 'restaurant_staff':
+        return 'Restaurant Staff';
       default:
         return role.replace('_', ' ');
     }
@@ -73,6 +75,8 @@ export function DashboardLayout() {
         return 'bg-conference text-conference-foreground';
       case 'hotel_staff':
         return 'bg-hotel text-hotel-foreground';
+      case 'restaurant_staff':
+        return 'bg-orange-500 text-white';
       default:
         return 'bg-muted text-muted-foreground';
     }
@@ -186,7 +190,7 @@ export function DashboardLayout() {
           {/* Footer */}
           <footer className="h-12 border-t bg-card flex items-center justify-between px-4 lg:px-6">
             <div className="text-xs text-muted-foreground">
-              © {new Date().getFullYear()} Pool Management System v1.0
+              © {new Date().getFullYear()} Hotel Management System v1.0
             </div>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span>User ID: {user._id.substring(0, 8)}...</span>

@@ -1,15 +1,15 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// ✅ Export UserRole type separately
-export type UserRole = 'admin' | 'pool_staff' | 'conference_staff' | 'hotel_staff';
+// ✅ Export UserRole type with restaurant_staff added
+export type UserRole = 'admin' | 'pool_staff' | 'conference_staff' | 'hotel_staff' | 'restaurant_staff';
 
 interface User {
   _id: string;
   name: string;
   username: string;
   email: string;
-  role: UserRole; // ✅ Use the exported type
+  role: UserRole;
   isActive: boolean;
   lastLogin?: string;
   createdAt: string;
@@ -132,10 +132,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             navigate('/pool');
             break;
           case 'conference_staff':
-            navigate('/conference');
+            navigate('/conference/bookings');
             break;
           case 'hotel_staff':
             navigate('/hotel');
+            break;
+          case 'restaurant_staff':
+            navigate('/restaurant');
             break;
           default:
             navigate('/dashboard');
@@ -163,7 +166,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     navigate('/login');
   };
 
-  // Add token to all fetch requests
   // Add token to all fetch requests
   const authFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
     const currentToken = token || localStorage.getItem('token');

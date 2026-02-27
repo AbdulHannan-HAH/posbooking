@@ -1,4 +1,7 @@
+// pages/conference/ConferenceReports.tsx
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { StatCard } from '@/components/ui/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,7 +26,7 @@ import {
     Loader2,
     PieChart as PieChartIcon
 } from 'lucide-react';
-import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
     BarChart,
@@ -44,6 +47,8 @@ import { useConferenceService } from '@/services/conferenceService';
 import { toast } from 'sonner';
 
 export default function ConferenceReports() {
+    const { user } = useAuth();
+    const navigate = useNavigate();
     const conferenceService = useConferenceService();
     const [dateRange, setDateRange] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
     const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
@@ -55,10 +60,15 @@ export default function ConferenceReports() {
     const [eventTypeData, setEventTypeData] = useState<any[]>([]);
     const [halls, setHalls] = useState<any[]>([]);
 
+    // Agar staff hai to bookings par redirect kar do
     useEffect(() => {
+        if (user?.role === 'conference_staff') {
+            navigate('/conference/bookings');
+            return;
+        }
         fetchHalls();
         fetchReports();
-    }, [startDate, endDate, dateRange, hallFilter]);
+    }, [user, startDate, endDate, dateRange, hallFilter]);
 
     const fetchHalls = async () => {
         try {

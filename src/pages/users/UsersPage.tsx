@@ -30,7 +30,7 @@ interface User {
   name: string;
   username: string;
   email: string;
-  role: 'admin' | 'pool_staff' | 'conference_staff' | 'hotel_staff';
+  role: 'admin' | 'pool_staff' | 'conference_staff' | 'hotel_staff' | 'restaurant_staff';
   isActive: boolean;
   createdAt: string;
 }
@@ -40,6 +40,7 @@ const roleLabels: Record<string, string> = {
   pool_staff: 'Pool Staff',
   conference_staff: 'Conference Staff',
   hotel_staff: 'Hotel Staff',
+  restaurant_staff: 'Restaurant Staff',
 };
 
 const roleColors: Record<string, string> = {
@@ -47,6 +48,7 @@ const roleColors: Record<string, string> = {
   pool_staff: 'bg-pool-light text-pool-foreground',
   conference_staff: 'bg-conference-light text-conference-foreground',
   hotel_staff: 'bg-hotel-light text-hotel-foreground',
+  restaurant_staff: 'bg-orange-500 text-white',
 };
 
 export default function UsersPage() {
@@ -389,6 +391,7 @@ export default function UsersPage() {
                     <SelectItem value="pool_staff">Pool Staff</SelectItem>
                     <SelectItem value="conference_staff">Conference Staff</SelectItem>
                     <SelectItem value="hotel_staff">Hotel Staff</SelectItem>
+                    <SelectItem value="restaurant_staff">Restaurant Staff</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -449,6 +452,7 @@ export default function UsersPage() {
                     <SelectItem value="pool_staff">Pool Staff</SelectItem>
                     <SelectItem value="conference_staff">Conference Staff</SelectItem>
                     <SelectItem value="hotel_staff">Hotel Staff</SelectItem>
+                    <SelectItem value="restaurant_staff">Restaurant Staff</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

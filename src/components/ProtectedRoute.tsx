@@ -1,9 +1,10 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { type UserRole } from '@/contexts/AuthContext';
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
-    allowedRoles?: ('admin' | 'pool_staff' | 'conference_staff' | 'hotel_staff')[];
+    allowedRoles?: UserRole[];
 }
 
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
@@ -40,7 +41,7 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
                     <h1 className="text-2xl font-bold text-destructive">Access Denied</h1>
                     <p className="text-muted-foreground mt-2 mb-6">
                         You don't have permission to access this page.
-                        Your role is <span className="font-medium text-foreground">{user.role}</span>
+                        Your role is <span className="font-medium text-foreground capitalize">{user.role.replace('_', ' ')}</span>
                     </p>
                     <button
                         onClick={() => window.history.back()}

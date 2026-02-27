@@ -56,7 +56,7 @@ export default function Login() {
               <Waves className="h-8 w-8 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold text-primary-foreground">Peace</h1>
+              <h1 className="text-4xl font-bold text-primary-foreground">PEH</h1>
               <p className="text-primary-foreground/70">Welcome to Peace Empire Hotel, Pool, Conference/Villas POS</p>
             </div>
           </div>
@@ -105,7 +105,7 @@ export default function Login() {
               <Waves className="h-8 w-8 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Peace</h1>
+              <h1 className="text-2xl font-bold">PEH</h1>
               <p className="text-sm text-muted-foreground max-w-[280px]">
                 Welcome to Peace Empire Hotel, Pool, Conference/Villas POS
               </p>

@@ -1,4 +1,3 @@
-// App.tsx
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -26,12 +25,18 @@ import NewHotelReservation from "./pages/hotel/NewHotelReservation";
 import ViewHotelReservation from "./pages/hotel/ViewHotelReservation";
 import HotelReports from "./pages/hotel/HotelReports";
 import HotelSettings from "./pages/hotel/HotelSettings";
+import HotelRooms from "./pages/hotel/HotelRooms";
+import RestaurantDashboard from "./pages/restaurant/RestaurantDashboard";
+import MenuItems from "./pages/restaurant/MenuItems";
+import RestaurantSales from "./pages/restaurant/RestaurantSales";  // ADD THIS
+import NewSale from "./pages/restaurant/NewSale";
+import ViewSale from "./pages/restaurant/ViewSale";  // ADD THIS
+import RestaurantReports from "./pages/restaurant/RestaurantReports";
+import RestaurantSettings from "./pages/restaurant/RestaurantSettings";  // ADD THIS
 import UsersPage from "./pages/users/UsersPage";
 import AnalyticsPage from "./pages/analytics/AnalyticsPage";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
-import HotelRooms from "./pages/hotel/HotelRooms";
-
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -123,7 +128,7 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/conference/settings" element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <ProtectedRoute allowedRoles={['admin', 'conference_staff']}>
                   <ConferenceSettings />
                 </ProtectedRoute>
               } />
@@ -162,6 +167,43 @@ const App = () => (
               <Route path="/hotel/settings" element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <HotelSettings />
+                </ProtectedRoute>
+              } />
+
+              {/* Restaurant & Bar Routes */}
+              <Route path="/restaurant" element={
+                <ProtectedRoute allowedRoles={['admin', 'restaurant_staff']}>
+                  <RestaurantDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/restaurant/menu-items" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <MenuItems />
+                </ProtectedRoute>
+              } />
+              <Route path="/restaurant/sales" element={
+                <ProtectedRoute allowedRoles={['admin', 'restaurant_staff']}>
+                  <RestaurantSales />
+                </ProtectedRoute>
+              } />
+              <Route path="/restaurant/sales/new" element={
+                <ProtectedRoute allowedRoles={['admin', 'restaurant_staff']}>
+                  <NewSale />
+                </ProtectedRoute>
+              } />
+              <Route path="/restaurant/sales/:id" element={
+                <ProtectedRoute allowedRoles={['admin', 'restaurant_staff']}>
+                  <ViewSale />
+                </ProtectedRoute>
+              } />
+              <Route path="/restaurant/reports" element={
+                <ProtectedRoute allowedRoles={['admin', 'restaurant_staff']}>
+                  <RestaurantReports />
+                </ProtectedRoute>
+              } />
+              <Route path="/restaurant/settings" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <RestaurantSettings />
                 </ProtectedRoute>
               } />
 

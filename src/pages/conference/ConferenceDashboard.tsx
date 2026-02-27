@@ -1,4 +1,7 @@
+// pages/conference/ConferenceDashboard.tsx
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { StatCard } from '@/components/ui/StatCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +14,8 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 
 export default function ConferenceDashboard() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const conferenceService = useConferenceService();
   const [stats, setStats] = useState({
     todayEvents: 0,
@@ -22,9 +27,14 @@ export default function ConferenceDashboard() {
   });
   const [loading, setLoading] = useState(true);
 
+  // Agar staff hai to bookings par redirect kar do
   useEffect(() => {
+    if (user?.role === 'conference_staff') {
+      navigate('/conference/bookings');
+      return;
+    }
     fetchDashboardData();
-  }, []);
+  }, [user]);
 
   const fetchDashboardData = async () => {
     try {

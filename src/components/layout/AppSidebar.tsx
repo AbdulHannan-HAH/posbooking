@@ -1,4 +1,3 @@
-// components/layout/AppSidebar.tsx
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -19,20 +18,24 @@ import {
   Building2,
   Hotel,
   Users,
-  BarChart3,
   LogOut,
   CalendarDays,
   ClipboardList,
-  CreditCard,
   FileText,
   BedDouble,
   CalendarCheck,
   Settings,
+  Utensils,
+  Coffee,
+  Beer,
+  ShoppingBag,
+  Wine,
+  TrendingUp,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { Button } from '@/components/ui/button';
 
-type UserRole = 'admin' | 'pool_staff' | 'conference_staff' | 'hotel_staff';
+type UserRole = 'admin' | 'pool_staff' | 'conference_staff' | 'hotel_staff' | 'restaurant_staff';
 
 interface MenuItem {
   title: string;
@@ -152,6 +155,41 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    label: 'Restaurant & Bar',
+    items: [
+      {
+        title: 'Restaurant Dashboard',
+        url: '/restaurant',
+        icon: Utensils,
+        roles: ['admin', 'restaurant_staff'],
+      },
+      {
+        title: 'Menu Items',
+        url: '/restaurant/menu-items',
+        icon: Coffee,
+        roles: ['admin', 'restaurant_staff'],
+      },
+      {
+        title: 'Orders',
+        url: '/restaurant/sales',
+        icon: ShoppingBag,
+        roles: ['admin', 'restaurant_staff'],
+      },
+      {
+        title: 'Reports',
+        url: '/restaurant/reports',
+        icon: TrendingUp,
+        roles: ['admin', 'restaurant_staff'],
+      },
+      {
+        title: 'Settings',
+        url: '/restaurant/settings',
+        icon: Settings,
+        roles: ['admin'],
+      },
+    ],
+  },
+  {
     label: 'Administration',
     items: [
       {
@@ -160,7 +198,12 @@ const menuGroups: MenuGroup[] = [
         icon: Users,
         roles: ['admin'],
       },
-
+      {
+        title: 'Analytics',
+        url: '/analytics',
+        icon: TrendingUp,
+        roles: ['admin'],
+      },
     ],
   },
 ];
@@ -188,8 +231,8 @@ export function AppSidebar() {
     <Sidebar className="border-r-0">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl gradient-pool flex items-center justify-center">
-            <Waves className="h-5 w-5 text-primary-foreground" />
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center">
+            <Utensils className="h-5 w-5 text-white" />
           </div>
           <div>
             <h1 className="text-lg font-bold text-sidebar-foreground">HMS Pro</h1>

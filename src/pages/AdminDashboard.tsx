@@ -1,4 +1,3 @@
-// pages/AdminDashboard.tsx
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
@@ -7,14 +6,21 @@ import { ModuleCard } from '@/components/ui/ModuleCard';
 import { usePoolService } from '@/services/poolService';
 import { useConferenceService } from '@/services/conferenceService';
 import { useHotelService } from '@/services/hotelService';
-import { Waves, Building2, Hotel, CalendarDays, DollarSign, Clock, Users, Loader2 } from 'lucide-react';
+import { useRestaurantService } from '@/services/restaurantService';
+import {
+  Waves, Building2, Hotel, CalendarDays, DollarSign, Clock, Users, Loader2,
+  Utensils, Coffee, Beer, Wine, TrendingUp, ShoppingBag
+} from 'lucide-react';
 import { format } from 'date-fns';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 
 export default function AdminDashboard() {
   const { user, isLoading } = useAuth();
   const poolService = usePoolService();
   const conferenceService = useConferenceService();
   const hotelService = useHotelService();
+  const restaurantService = useRestaurantService();
 
   const [stats, setStats] = useState({
     totalBookingsToday: 0,
@@ -40,6 +46,15 @@ export default function AdminDashboard() {
       totalRooms: 0,
       occupiedRooms: 0,
       monthlyRevenue: 0
+    },
+    restaurantStats: {
+      todayOrders: 0,
+      todayRevenue: 0,
+      activeOrders: 0,
+      pendingPayments: 0,
+      popularItems: [],
+      categoryBreakdown: [],
+      topSellingItems: []
     }
   });
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
@@ -56,13 +71,24 @@ export default function AdminDashboard() {
       setLoading(true);
 
       // Fetch data from all services
-      const [poolData, conferenceData, hotelData, poolBookings, conferenceBookings, hotelReservations] = await Promise.all([
+      const [
+        poolData,
+        conferenceData,
+        hotelData,
+        poolBookings,
+        conferenceBookings,
+        hotelReservations,
+        restaurantData,
+        restaurantSales
+      ] = await Promise.all([
         poolService.getDashboardStats(),
         conferenceService.getDashboardStats(),
         hotelService.getDashboardStats(),
         poolService.getBookings({ limit: 3, sortBy: 'createdAt', sortOrder: 'desc' }),
         conferenceService.getBookings({ limit: 3, sortBy: 'createdAt', sortOrder: 'desc' }),
-        hotelService.getReservations({ limit: 3, sortBy: 'createdAt', sortOrder: 'desc' })
+        hotelService.getReservations({ limit: 3, sortBy: 'createdAt', sortOrder: 'desc' }),
+        restaurantService.getDashboardStats(),
+        restaurantService.getSales({ limit: 3, sortBy: 'createdAt', sortOrder: 'desc' })
       ]);
 
       // Process pool stats
@@ -92,15 +118,53 @@ export default function AdminDashboard() {
         monthlyRevenue: hotelData.success ? hotelData.stats?.monthlyRevenue || 0 : 0
       };
 
+      // Process restaurant stats
+      const restaurantStats = {
+        todayOrders: restaurantData.success ? restaurantData.stats?.todaySales || 0 : 0,
+        todayRevenue: restaurantData.success ? restaurantData.stats?.todayRevenue || 0 : 0,
+        activeOrders: restaurantData.success ? restaurantData.stats?.activeOrders || 0 : 0,
+        pendingPayments: restaurantData.success ? restaurantData.stats?.pendingPayments || 0 : 0,
+        popularItems: restaurantData.success ? restaurantData.stats?.popularItems || [] : [],
+        categoryBreakdown: restaurantData.success ? restaurantData.stats?.categoryBreakdown || [] : [],
+        topSellingItems: restaurantData.success ? restaurantData.stats?.popularItems?.slice(0, 3) || [] : []
+      };
+
       // Calculate totals
-      const totalBookingsToday = poolStats.todayBookings + conferenceStats.todayEvents + hotelStats.checkInsToday;
-      const monthlyRevenue = poolStats.todayRevenue + conferenceStats.monthlyRevenue + hotelStats.monthlyRevenue;
+      const totalBookingsToday = poolStats.todayBookings +
+        conferenceStats.todayEvents +
+        hotelStats.checkInsToday +
+        restaurantStats.todayOrders;
+
+      const monthlyRevenue = poolStats.todayRevenue +
+        conferenceStats.monthlyRevenue +
+        hotelStats.monthlyRevenue +
+        restaurantStats.todayRevenue;
+
       const pendingPayments = (poolData.success ? poolData.stats?.pendingPayments || 0 : 0) +
-        conferenceStats.pendingRequests;
-      const activeBookings = poolStats.currentCapacity + hotelStats.occupiedRooms;
+        conferenceStats.pendingRequests +
+        restaurantStats.pendingPayments;
+
+      const activeBookings = poolStats.currentCapacity +
+        hotelStats.occupiedRooms +
+        restaurantStats.activeOrders;
 
       // Get recent activities from all modules
       const recentActivitiesList = [];
+
+      // Restaurant activities
+      if (restaurantSales.success && restaurantSales.sales) {
+        restaurantSales.sales.forEach((sale: any) => {
+          recentActivitiesList.push({
+            type: 'restaurant',
+            title: `Restaurant Order - ${sale.saleNumber}`,
+            description: `${sale.customerName} ordered ${sale.items.length} items`,
+            time: formatTimeAgo(sale.createdAt),
+            amount: sale.totalAmount,
+            status: sale.orderStatus,
+            paymentStatus: sale.paymentStatus
+          });
+        });
+      }
 
       // Pool activities
       if (poolBookings.success && poolBookings.bookings) {
@@ -154,10 +218,11 @@ export default function AdminDashboard() {
         activeBookings,
         poolStats,
         conferenceStats,
-        hotelStats
+        hotelStats,
+        restaurantStats
       });
 
-      setRecentActivities(recentActivitiesList.slice(0, 6));
+      setRecentActivities(recentActivitiesList.slice(0, 8));
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -181,11 +246,18 @@ export default function AdminDashboard() {
     return format(date, 'MMM dd, yyyy');
   };
 
-  const calculateChange = (current: number, previous: number = 0) => {
-    if (previous === 0) return '+0% from yesterday';
-    const change = ((current - previous) / previous) * 100;
-    const sign = change >= 0 ? '+' : '';
-    return `${sign}${Math.round(change)}% from yesterday`;
+  const getStatusColor = (type: string, status: string) => {
+    if (type === 'restaurant') {
+      switch (status) {
+        case 'pending': return 'bg-yellow-100 text-yellow-800';
+        case 'preparing': return 'bg-blue-100 text-blue-800';
+        case 'ready': return 'bg-green-100 text-green-800';
+        case 'served': return 'bg-purple-100 text-purple-800';
+        case 'cancelled': return 'bg-red-100 text-red-800';
+        default: return 'bg-gray-100 text-gray-800';
+      }
+    }
+    return '';
   };
 
   // Show loading state
@@ -216,7 +288,7 @@ export default function AdminDashboard() {
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">
-          Welcome back, {user?.name}. Here's what's happening today.
+          Welcome back, {user?.name}. Here's what's happening across all modules.
           <span className="ml-2 text-xs px-2 py-1 bg-primary/10 text-primary rounded">
             Role: {user?.role}
           </span>
@@ -228,15 +300,15 @@ export default function AdminDashboard() {
         <StatCard
           title="Total Bookings Today"
           value={stats.totalBookingsToday}
-          change={calculateChange(stats.totalBookingsToday, Math.floor(stats.totalBookingsToday * 0.88))}
-          changeType={stats.totalBookingsToday > 0 ? "positive" : "neutral"}
+          change="Across all modules"
+          changeType="positive"
           icon={CalendarDays}
           iconClassName="gradient-pool"
         />
         <StatCard
           title="Monthly Revenue"
           value={`$${stats.monthlyRevenue.toLocaleString()}`}
-          change="+8% from last month"
+          change="+12% from last month"
           changeType="positive"
           icon={DollarSign}
           iconClassName="gradient-conference"
@@ -250,7 +322,7 @@ export default function AdminDashboard() {
           iconClassName="gradient-hotel"
         />
         <StatCard
-          title="Active Bookings"
+          title="Active Now"
           value={stats.activeBookings}
           change="Currently in progress"
           changeType="neutral"
@@ -262,7 +334,7 @@ export default function AdminDashboard() {
       {/* Module Cards */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Manage Modules</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <ModuleCard
             title="Pool"
             description="Manage pool bookings, passes, and capacity"
@@ -299,105 +371,201 @@ export default function AdminDashboard() {
               { label: 'Monthly Revenue', value: `$${stats.hotelStats.monthlyRevenue.toLocaleString()}` },
             ]}
           />
+          <ModuleCard
+            title="Restaurant & Bar"
+            description="Manage orders, menu items, and sales"
+            icon={Utensils}
+            href="/restaurant"
+            variant="restaurant"
+            stats={[
+              { label: "Today's Orders", value: stats.restaurantStats.todayOrders },
+              { label: 'Active Orders', value: stats.restaurantStats.activeOrders },
+              { label: "Today's Revenue", value: `$${stats.restaurantStats.todayRevenue.toFixed(2)}` },
+            ]}
+          />
         </div>
       </div>
+
+      {/* Restaurant Quick Stats */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Utensils className="h-5 w-5 text-orange-500" />
+            Restaurant & Bar Overview
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="p-4 bg-orange-50 rounded-lg">
+              <p className="text-sm text-orange-600 mb-1">Today's Orders</p>
+              <p className="text-2xl font-bold text-orange-700">{stats.restaurantStats.todayOrders}</p>
+            </div>
+            <div className="p-4 bg-green-50 rounded-lg">
+              <p className="text-sm text-green-600 mb-1">Today's Revenue</p>
+              <p className="text-2xl font-bold text-green-700">${stats.restaurantStats.todayRevenue.toFixed(2)}</p>
+            </div>
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-600 mb-1">Active Orders</p>
+              <p className="text-2xl font-bold text-blue-700">{stats.restaurantStats.activeOrders}</p>
+            </div>
+            <div className="p-4 bg-yellow-50 rounded-lg">
+              <p className="text-sm text-yellow-600 mb-1">Pending Payments</p>
+              <p className="text-2xl font-bold text-yellow-700">{stats.restaurantStats.pendingPayments}</p>
+            </div>
+          </div>
+
+          {/* Top Selling Items */}
+          {stats.restaurantStats.topSellingItems.length > 0 && (
+            <div>
+              <h3 className="font-medium mb-3">Top Selling Items Today</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {stats.restaurantStats.topSellingItems.map((item: any, index: number) => (
+                  <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
+                    <div className="h-10 w-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                      {item.category === 'beer' ? <Beer className="h-5 w-5 text-orange-600" /> :
+                        item.category === 'wine' ? <Wine className="h-5 w-5 text-orange-600" /> :
+                          <Coffee className="h-5 w-5 text-orange-600" />}
+                    </div>
+                    <div>
+                      <p className="font-medium">{item.name}</p>
+                      <p className="text-sm text-muted-foreground">Qty: {item.quantity} • ${item.revenue.toFixed(2)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-card rounded-xl border p-6">
-          <h3 className="font-semibold mb-4">Recent Activity</h3>
-          <div className="space-y-4">
-            {recentActivities.length > 0 ? (
-              recentActivities.map((activity, index) => (
-                <div key={index} className="flex items-center justify-between py-3 border-b last:border-0">
-                  <div className="flex items-start gap-3">
-                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${activity.type === 'pool' ? 'gradient-pool' :
-                        activity.type === 'conference' ? 'gradient-conference' :
-                          'gradient-hotel'
-                      }`}>
-                      {activity.type === 'pool' && <Waves className="h-5 w-5 text-primary-foreground" />}
-                      {activity.type === 'conference' && <Building2 className="h-5 w-5 text-primary-foreground" />}
-                      {activity.type === 'hotel' && <Hotel className="h-5 w-5 text-primary-foreground" />}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 max-h-[400px] overflow-y-auto">
+              {recentActivities.length > 0 ? (
+                recentActivities.map((activity, index) => (
+                  <div key={index} className="flex items-start justify-between py-3 border-b last:border-0">
+                    <div className="flex items-start gap-3">
+                      <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${activity.type === 'pool' ? 'gradient-pool' :
+                          activity.type === 'conference' ? 'gradient-conference' :
+                            activity.type === 'hotel' ? 'gradient-hotel' :
+                              'bg-orange-500'
+                        }`}>
+                        {activity.type === 'pool' && <Waves className="h-5 w-5 text-white" />}
+                        {activity.type === 'conference' && <Building2 className="h-5 w-5 text-white" />}
+                        {activity.type === 'hotel' && <Hotel className="h-5 w-5 text-white" />}
+                        {activity.type === 'restaurant' && <Utensils className="h-5 w-5 text-white" />}
+                      </div>
+                      <div>
+                        <p className="font-medium">{activity.title}</p>
+                        <p className="text-sm text-muted-foreground">{activity.description}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-muted-foreground">{activity.time}</span>
+                          {activity.type === 'restaurant' && (
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor('restaurant', activity.status)}`}>
+                              {activity.status}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">{activity.title}</p>
-                      <p className="text-sm text-muted-foreground">{activity.description}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
+                    <div className="text-right">
+                      <span className="font-medium">${activity.amount?.toFixed(2) || '0.00'}</span>
+                      {activity.paymentStatus && (
+                        <span className={`block text-xs mt-1 ${activity.paymentStatus === 'paid' ? 'text-green-600' :
+                            activity.paymentStatus === 'pending' ? 'text-yellow-600' :
+                              'text-red-600'
+                          }`}>
+                          {activity.paymentStatus}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className="font-medium">${activity.amount?.toFixed(2) || '0.00'}</span>
-                    <span className={`block text-xs mt-1 ${activity.status === 'paid' || activity.status === 'confirmed' || activity.status === 'checked_in' ? 'text-success' :
-                        activity.status === 'pending' ? 'text-warning' :
-                          'text-destructive'
-                      }`}>
-                      {activity.status?.replace('_', ' ')}
-                    </span>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No recent activities found</p>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No recent activities found</p>
-              </div>
-            )}
-          </div>
-        </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Quick Actions */}
-        <div className="bg-card rounded-xl border p-6">
-          <h3 className="font-semibold mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              {
-                label: 'New Pool Booking',
-                icon: Waves,
-                color: 'gradient-pool',
-                href: '/pool/bookings/new'
-              },
-              {
-                label: 'Conference Booking',
-                icon: Building2,
-                color: 'gradient-conference',
-                href: '/conference/bookings/new'
-              },
-              {
-                label: 'Hotel Reservation',
-                icon: Hotel,
-                color: 'gradient-hotel',
-                href: '/hotel/reservations/new'
-              },
-              {
-                label: 'View Reports',
-                icon: CalendarDays,
-                color: 'gradient-admin',
-                href: '/analytics'
-              },
-            ].map((action, index) => (
-              <a
-                key={index}
-                href={action.href}
-                className="flex items-center gap-3 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors text-left no-underline"
-              >
-                <div className={`h-10 w-10 rounded-lg ${action.color} flex items-center justify-center`}>
-                  <action.icon className="h-5 w-5 text-primary-foreground" />
-                </div>
-                <span className="text-sm font-medium text-foreground">{action.label}</span>
-              </a>
-            ))}
-          </div>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                {
+                  label: 'New Pool Booking',
+                  icon: Waves,
+                  color: 'gradient-pool',
+                  href: '/pool/bookings/new'
+                },
+                {
+                  label: 'Conference Booking',
+                  icon: Building2,
+                  color: 'gradient-conference',
+                  href: '/conference/bookings/new'
+                },
+                {
+                  label: 'Hotel Reservation',
+                  icon: Hotel,
+                  color: 'gradient-hotel',
+                  href: '/hotel/reservations/new'
+                },
+                {
+                  label: 'Restaurant Order',
+                  icon: Utensils,
+                  color: 'bg-orange-500',
+                  href: '/restaurant/sales/new'
+                },
+                {
+                  label: 'Add Menu Item',
+                  icon: Coffee,
+                  color: 'bg-orange-500',
+                  href: '/restaurant/menu-items'
+                },
+                {
+                  label: 'View Reports',
+                  icon: TrendingUp,
+                  color: 'gradient-admin',
+                  href: '/analytics'
+                },
+              ].map((action, index) => (
+                <a
+                  key={index}
+                  href={action.href}
+                  className="flex items-center gap-3 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors text-left no-underline"
+                >
+                  <div className={`h-10 w-10 rounded-lg ${action.color} flex items-center justify-center`}>
+                    <action.icon className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">{action.label}</span>
+                </a>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Module Performance Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Pool Performance */}
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-xl border">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 rounded-lg gradient-pool flex items-center justify-center">
-              <Waves className="h-5 w-5 text-primary-foreground" />
+              <Waves className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h4 className="font-semibold">Pool Performance</h4>
+              <h4 className="font-semibold">Pool</h4>
               <p className="text-sm text-muted-foreground">Today's metrics</p>
             </div>
           </div>
@@ -419,14 +587,15 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Conference Performance */}
         <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-6 rounded-xl border">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 rounded-lg gradient-conference flex items-center justify-center">
-              <Building2 className="h-5 w-5 text-primary-foreground" />
+              <Building2 className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h4 className="font-semibold">Conference Performance</h4>
-              <p className="text-sm text-muted-foreground">This month</p>
+              <h4 className="font-semibold">Conference</h4>
+              <p className="text-sm text-muted-foreground">Monthly</p>
             </div>
           </div>
           <div className="space-y-2">
@@ -435,23 +604,24 @@ export default function AdminDashboard() {
               <span className="font-semibold">${stats.conferenceStats.monthlyRevenue.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Pending Approvals</span>
+              <span className="text-sm text-muted-foreground">Pending</span>
               <span className="font-semibold">{stats.conferenceStats.pendingRequests}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Active Events</span>
+              <span className="text-sm text-muted-foreground">Events</span>
               <span className="font-semibold">{stats.conferenceStats.activeEvents}</span>
             </div>
           </div>
         </div>
 
+        {/* Hotel Performance */}
         <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-xl border">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 rounded-lg gradient-hotel flex items-center justify-center">
-              <Hotel className="h-5 w-5 text-primary-foreground" />
+              <Hotel className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h4 className="font-semibold">Hotel Performance</h4>
+              <h4 className="font-semibold">Hotel</h4>
               <p className="text-sm text-muted-foreground">Today's metrics</p>
             </div>
           </div>
@@ -467,6 +637,33 @@ export default function AdminDashboard() {
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Check-ins</span>
               <span className="font-semibold">{stats.hotelStats.checkInsToday}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Restaurant Performance */}
+        <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-xl border">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-10 w-10 rounded-lg bg-orange-500 flex items-center justify-center">
+              <Utensils className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h4 className="font-semibold">Restaurant</h4>
+              <p className="text-sm text-muted-foreground">Today's metrics</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">Revenue</span>
+              <span className="font-semibold">${stats.restaurantStats.todayRevenue.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">Orders</span>
+              <span className="font-semibold">{stats.restaurantStats.todayOrders}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">Active</span>
+              <span className="font-semibold">{stats.restaurantStats.activeOrders}</span>
             </div>
           </div>
         </div>
