@@ -35,8 +35,8 @@ const bookingSchema = z.object({
     eventName: z.string().min(2, 'Event name must be at least 2 characters').max(200),
     clientName: z.string().min(2, 'Client name must be at least 2 characters').max(100),
     company: z.string().optional(),
-    email: z.string().email('Invalid email address'),
-    phone: z.string().min(10, 'Phone number must be at least 10 digits'),
+    email: z.string().email('Invalid email address').optional().or(z.literal('')),
+    phone: z.string().min(10, 'Phone number must be at least 10 digits').optional().or(z.literal('')),
     hallType: z.string({ required_error: 'Please select a hall' }),
     startDate: z.date({ required_error: 'Please select start date' }),
     endDate: z.date({ required_error: 'Please select end date' }),
@@ -117,7 +117,7 @@ export default function NewConferenceBooking() {
             }
         });
         return () => subscription.unsubscribe();
-    }, [form.watch]);
+    }, [form.watch, halls]);
 
     const fetchHalls = async () => {
         try {
@@ -182,13 +182,16 @@ export default function NewConferenceBooking() {
             setLoading(true);
             console.log('Submitting booking data:', data);
 
-            const bookingData = {
+            // Clean up empty strings for optional fields
+            const cleanedData = {
                 ...data,
+                email: data.email || undefined,
+                phone: data.phone || undefined,
                 startDate: format(data.startDate, 'yyyy-MM-dd'),
                 endDate: format(data.endDate, 'yyyy-MM-dd'),
             };
 
-            const response = await conferenceService.createBooking(bookingData);
+            const response = await conferenceService.createBooking(cleanedData);
 
             if (response.success) {
                 toast.success('Conference booking created successfully!');
@@ -307,7 +310,7 @@ export default function NewConferenceBooking() {
                                         name="email"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Email *</FormLabel>
+                                                <FormLabel>Email <span className="text-sm text-muted-foreground">(Optional)</span></FormLabel>
                                                 <FormControl>
                                                     <Input type="email" placeholder="john@example.com" {...field} />
                                                 </FormControl>
@@ -320,7 +323,7 @@ export default function NewConferenceBooking() {
                                         name="phone"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Phone *</FormLabel>
+                                                <FormLabel>Phone <span className="text-sm text-muted-foreground">(Optional)</span></FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="+1 234 567 8900" {...field} />
                                                 </FormControl>
