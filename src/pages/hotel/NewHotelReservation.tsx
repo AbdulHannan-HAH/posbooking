@@ -36,7 +36,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 const reservationSchema = z.object({
     guestName: z.string().min(2, 'Name must be at least 2 characters').max(100),
     email: z.string().email('Invalid email address').optional().or(z.literal('')),
-    phone: z.string().min(10, 'Phone number must be at least 10 digits'),
+    phone: z.string().optional().or(z.literal('')), // Phone is now optional
     checkIn: z.date({ required_error: 'Please select check-in date' }),
     checkOut: z.date({ required_error: 'Please select check-out date' }),
     roomType: z.string({ required_error: 'Please select a room type' }),
@@ -66,7 +66,6 @@ export default function NewHotelReservation() {
     const [selectedServices, setSelectedServices] = useState<SelectedService[]>([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-
 
     const [manualRoomSelection, setManualRoomSelection] = useState(false); // ✅ New flag
     // const [manualRoomSelection, setManualRoomSelection] = useState(false);
@@ -179,11 +178,6 @@ export default function NewHotelReservation() {
         setManualRoomSelection(false); // reset manual selection
     };
 
-    // const handleRoomSelection = (roomNumber: string) => {
-    //     form.setValue('roomNumber', roomNumber);
-    //     setManualRoomSelection(true); // ✅ Mark manual selection
-    // };
-
     // Services functions remain same
     const handleServiceSelection = useCallback((service: HotelService) => {
         setSelectedServices(prev => {
@@ -240,7 +234,7 @@ export default function NewHotelReservation() {
             const reservationPayload = {
                 guestName: data.guestName,
                 email: data.email || '',
-                phone: data.phone,
+                phone: data.phone || '', // Send empty string if not provided
                 checkIn: format(data.checkIn, 'yyyy-MM-dd'),
                 checkOut: format(data.checkOut, 'yyyy-MM-dd'),
                 roomType: selectedRoomType?.name || '',
@@ -340,7 +334,7 @@ export default function NewHotelReservation() {
                                         name="guestName"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Full Name *</FormLabel>
+                                                <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="John Smith" {...field} />
                                                 </FormControl>
@@ -353,7 +347,7 @@ export default function NewHotelReservation() {
                                         name="email"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Email (Optional)</FormLabel>
+                                                <FormLabel>Email <span className="text-muted-foreground text-xs">(Optional)</span></FormLabel>
                                                 <FormControl>
                                                     <Input type="email" placeholder="john@example.com" {...field} />
                                                 </FormControl>
@@ -367,7 +361,7 @@ export default function NewHotelReservation() {
                                     name="phone"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Phone Number *</FormLabel>
+                                            <FormLabel>Phone Number <span className="text-muted-foreground text-xs">(Optional)</span></FormLabel>
                                             <FormControl>
                                                 <Input placeholder="+1 234 567 8900" {...field} />
                                             </FormControl>
@@ -381,7 +375,7 @@ export default function NewHotelReservation() {
                                         name="adults"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Adults *</FormLabel>
+                                                <FormLabel>Adults <span className="text-red-500">*</span></FormLabel>
                                                 <div className="flex items-center gap-4">
                                                     <Button
                                                         type="button"
@@ -539,7 +533,7 @@ export default function NewHotelReservation() {
                                     name="paymentStatus"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Payment Status</FormLabel>
+                                            <FormLabel>Payment Status <span className="text-red-500">*</span></FormLabel>
                                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                 <FormControl>
                                                     <SelectTrigger>
@@ -588,7 +582,7 @@ export default function NewHotelReservation() {
                                         name="checkIn"
                                         render={({ field }) => (
                                             <FormItem className="flex flex-col">
-                                                <FormLabel>Check-in Date *</FormLabel>
+                                                <FormLabel>Check-in Date <span className="text-red-500">*</span></FormLabel>
                                                 <Popover>
                                                     <PopoverTrigger asChild>
                                                         <FormControl>
@@ -623,7 +617,7 @@ export default function NewHotelReservation() {
                                         name="checkOut"
                                         render={({ field }) => (
                                             <FormItem className="flex flex-col">
-                                                <FormLabel>Check-out Date *</FormLabel>
+                                                <FormLabel>Check-out Date <span className="text-red-500">*</span></FormLabel>
                                                 <Popover>
                                                     <PopoverTrigger asChild>
                                                         <FormControl>
@@ -671,7 +665,7 @@ export default function NewHotelReservation() {
                                     name="roomType"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Room Type *</FormLabel>
+                                            <FormLabel>Room Type <span className="text-red-500">*</span></FormLabel>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                                 {roomTypes.map((roomType) => (
                                                     <div
@@ -708,7 +702,7 @@ export default function NewHotelReservation() {
                             <CardHeader>
                                 <CardTitle className="text-lg flex items-center gap-2">
                                     <BedDouble className="h-5 w-5 text-hotel" />
-                                    Select Room *
+                                    Select Room <span className="text-red-500">*</span>
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">

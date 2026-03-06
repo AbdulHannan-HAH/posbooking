@@ -32,8 +32,8 @@ import { usePoolService } from '@/services/poolService';
 
 const bookingSchema = z.object({
   customerName: z.string().min(2, 'Name must be at least 2 characters').max(100),
-  email: z.string().email('Invalid email address'),
-  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
+  phone: z.string().optional().or(z.literal('')),
   date: z.date({ required_error: 'Please select a date' }),
   timeSlot: z.string({ required_error: 'Please select a time slot' }),
   passType: z.string({ required_error: 'Please select a pass type' }),
@@ -154,7 +154,7 @@ export default function NewPoolBooking() {
       customerName: '',
       email: '',
       phone: '',
-      passType: 'hourly', // Set default
+      passType: 'hourly',
       persons: 1,
       paymentStatus: 'pending',
       notes: '',
@@ -182,7 +182,6 @@ export default function NewPoolBooking() {
           form.setValue('passType', pricesResponse.ticketPrices[0].passType);
         }
       } else {
-        // Use hardcoded data if API fails
         console.log('⚠️ Using hardcoded ticket prices');
         setUseHardcodedData(true);
         if (!form.getValues().passType) {
@@ -196,7 +195,6 @@ export default function NewPoolBooking() {
           form.setValue('timeSlot', slotsResponse.timeSlots[0].value);
         }
       } else {
-        // Use hardcoded data if API fails
         console.log('⚠️ Using hardcoded time slots');
         setUseHardcodedData(true);
         if (!form.getValues().timeSlot) {
@@ -207,7 +205,6 @@ export default function NewPoolBooking() {
     } catch (error: any) {
       console.log('⚠️ API failed, using hardcoded data');
       setUseHardcodedData(true);
-      // Set defaults
       if (!form.getValues().passType) {
         form.setValue('passType', HARDCODED_TICKET_PRICES[0].passType);
       }
@@ -229,11 +226,11 @@ export default function NewPoolBooking() {
 
   const onSubmit = async (data: BookingFormData) => {
     try {
-      // Prepare data for API
+      // Prepare data for API - only include email/phone if they have values
       const apiData = {
         customerName: data.customerName,
-        email: data.email,
-        phone: data.phone,
+        email: data.email || '', // Send empty string if not provided
+        phone: data.phone || '', // Send empty string if not provided
         date: format(data.date, 'yyyy-MM-dd'),
         timeSlot: data.timeSlot,
         passType: data.passType,
@@ -242,15 +239,13 @@ export default function NewPoolBooking() {
         notes: data.notes || '',
       };
 
-      // If using hardcoded data, create mock response
       if (useHardcodedData) {
-        // Create mock booking
         const mockBooking = {
           _id: `booking-${Date.now()}`,
           bookingNumber: `PB-${Date.now().toString().slice(-6)}`,
           customerName: data.customerName,
-          email: data.email,
-          phone: data.phone,
+          email: data.email || '',
+          phone: data.phone || '',
           date: format(data.date, 'yyyy-MM-dd'),
           timeSlot: data.timeSlot,
           passType: data.passType,
@@ -266,7 +261,6 @@ export default function NewPoolBooking() {
         setShowInvoice(true);
         toast.success('Booking created successfully! (Demo Mode)');
 
-        // Reset form
         form.reset({
           customerName: '',
           email: '',
@@ -282,7 +276,6 @@ export default function NewPoolBooking() {
         return;
       }
 
-      // Try real API call
       const response = await poolService.createBooking(apiData);
 
       if (response.success) {
@@ -290,7 +283,6 @@ export default function NewPoolBooking() {
         setShowInvoice(true);
         toast.success('Booking created successfully!');
 
-        // Reset form
         form.reset({
           customerName: '',
           email: '',
@@ -367,7 +359,7 @@ export default function NewPoolBooking() {
                     name="customerName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Full Name</FormLabel>
+                        <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
                         <FormControl>
                           <Input placeholder="John Smith" {...field} />
                         </FormControl>
@@ -380,7 +372,7 @@ export default function NewPoolBooking() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel>Email <span className="text-muted-foreground text-xs">(Optional)</span></FormLabel>
                         <FormControl>
                           <Input type="email" placeholder="john@example.com" {...field} />
                         </FormControl>
@@ -394,7 +386,7 @@ export default function NewPoolBooking() {
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
+                      <FormLabel>Phone Number <span className="text-muted-foreground text-xs">(Optional)</span></FormLabel>
                       <FormControl>
                         <Input placeholder="+1 234 567 8900" {...field} />
                       </FormControl>
@@ -465,7 +457,7 @@ export default function NewPoolBooking() {
                   name="paymentStatus"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Payment Status</FormLabel>
+                      <FormLabel>Payment Status <span className="text-red-500">*</span></FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -502,7 +494,7 @@ export default function NewPoolBooking() {
                   name="date"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Select Date</FormLabel>
+                      <FormLabel>Select Date <span className="text-red-500">*</span></FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -538,7 +530,7 @@ export default function NewPoolBooking() {
                   name="timeSlot"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Select Time Slot</FormLabel>
+                      <FormLabel>Select Time Slot <span className="text-red-500">*</span></FormLabel>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {timeSlots.map((slot) => (
                           <div
@@ -590,7 +582,7 @@ export default function NewPoolBooking() {
                   name="passType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Pass Type</FormLabel>
+                      <FormLabel>Pass Type <span className="text-red-500">*</span></FormLabel>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {ticketPrices.map((pass) => (
                           <div
@@ -619,7 +611,7 @@ export default function NewPoolBooking() {
                   name="persons"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Number of Persons</FormLabel>
+                      <FormLabel>Number of Persons <span className="text-red-500">*</span></FormLabel>
                       <div className="flex items-center gap-4">
                         <Button
                           type="button"
