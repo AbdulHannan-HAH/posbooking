@@ -16,7 +16,8 @@ import {
   Printer,
   Edit,
   Trash2,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
@@ -42,6 +43,7 @@ export default function ViewPoolBooking() {
   const [showInvoice, setShowInvoice] = useState(false);
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -52,7 +54,10 @@ export default function ViewPoolBooking() {
   const fetchBooking = async () => {
     try {
       setLoading(true);
+      console.log('Fetching booking with ID:', id);
       const response = await poolService.getBookingById(id!);
+      console.log('Booking response:', response);
+
       if (response.success) {
         setBooking(response.booking);
       } else {
@@ -60,11 +65,18 @@ export default function ViewPoolBooking() {
         navigate('/pool/bookings');
       }
     } catch (error: any) {
+      console.error('Error fetching booking:', error);
       toast.error(error.message || 'Failed to load booking');
       navigate('/pool/bookings');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchBooking();
   };
 
   const handleDelete = async () => {
@@ -86,7 +98,7 @@ export default function ViewPoolBooking() {
       const response = await poolService.updatePaymentStatus(id!, 'paid');
       if (response.success) {
         toast.success('Payment status updated to Paid');
-        fetchBooking(); // Refresh booking data
+        fetchBooking();
       } else {
         toast.error(response.message || 'Failed to update status');
       }
@@ -176,6 +188,10 @@ export default function ViewPoolBooking() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           <Button variant="outline" onClick={() => setShowInvoice(true)}>
             <Printer className="h-4 w-4 mr-2" />
             Invoice
@@ -239,7 +255,7 @@ export default function ViewPoolBooking() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Email</p>
-                    <p className="font-medium">{booking.email}</p>
+                    <p className="font-medium">{booking.email || 'Not provided'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -248,7 +264,7 @@ export default function ViewPoolBooking() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Phone</p>
-                    <p className="font-medium">{booking.phone}</p>
+                    <p className="font-medium">{booking.phone || 'Not provided'}</p>
                   </div>
                 </div>
               </div>

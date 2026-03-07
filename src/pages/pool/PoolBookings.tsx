@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { Waves, Plus, Search, Filter, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Waves, Plus, Search, Filter, ChevronLeft, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { usePoolService } from '@/services/poolService';
 import { toast } from 'sonner';
@@ -25,6 +25,7 @@ export default function PoolBookings() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [totalBookings, setTotalBookings] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -34,6 +35,8 @@ export default function PoolBookings() {
   const fetchBookings = async () => {
     try {
       setLoading(true);
+
+      // Build params
       const params: any = {
         page: currentPage,
         limit: itemsPerPage,
@@ -45,16 +48,26 @@ export default function PoolBookings() {
         params.status = statusFilter;
       }
 
-      if (searchTerm) {
-        params.search = searchTerm;
+      if (searchTerm && searchTerm.trim() !== '') {
+        params.search = searchTerm.trim();
       }
 
+      console.log('Fetching bookings with params:', params);
       const response = await poolService.getBookings(params);
+      console.log('Bookings response:', response);
 
       if (response.success) {
-        setBookings(response.bookings || []);
+        // Handle response structure
+        const bookingsData = response.bookings || [];
+        setBookings(bookingsData);
+
+        // Handle pagination data
         setTotalPages(response.totalPages || 1);
         setTotalBookings(response.total || 0);
+
+        if (bookingsData.length === 0) {
+          console.log('No bookings found');
+        }
       } else {
         toast.error(response.message || 'Failed to fetch bookings');
         setBookings([]);
@@ -65,14 +78,20 @@ export default function PoolBookings() {
       setBookings([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchBookings();
   };
 
   const handleStatusUpdate = async (bookingId: string, newStatus: string) => {
     try {
       const response = await poolService.updatePaymentStatus(bookingId, newStatus);
       if (response.success) {
-        toast.success('Payment status updated successfully');
+        toast.success(`Payment status updated to ${newStatus}`);
         fetchBookings(); // Refresh list
       } else {
         toast.error(response.message || 'Failed to update status');
@@ -83,7 +102,7 @@ export default function PoolBookings() {
   };
 
   const handleDeleteBooking = async (bookingId: string) => {
-    if (!confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
+    if (!window.confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
       return;
     }
 
@@ -132,12 +151,22 @@ export default function PoolBookings() {
           </div>
           <p className="text-muted-foreground mt-1">View and manage all pool bookings</p>
         </div>
-        <Link to="/pool/bookings/new">
-          <Button className="gradient-pool border-0">
-            <Plus className="h-4 w-4 mr-2" />
-            New Booking
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
-        </Link>
+          <Link to="/pool/bookings/new">
+            <Button className="gradient-pool border-0">
+              <Plus className="h-4 w-4 mr-2" />
+              New Booking
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -147,7 +176,7 @@ export default function PoolBookings() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by customer name, email, or phone..."
+                placeholder="Search by customer name, email, phone, or booking number..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
@@ -173,8 +202,13 @@ export default function PoolBookings() {
 
       {/* Bookings Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Booking List</CardTitle>
+          {totalBookings > 0 && (
+            <span className="text-sm text-muted-foreground">
+              Total: {totalBookings} bookings
+            </span>
+          )}
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -190,6 +224,7 @@ export default function PoolBookings() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
+                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Booking #</th>
                       <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Customer</th>
                       <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Date</th>
                       <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Time Slot</th>
@@ -203,34 +238,69 @@ export default function PoolBookings() {
                   <tbody>
                     {bookings.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-8 text-center text-muted-foreground">
-                          No bookings found
+                        <td colSpan={9} className="py-12 text-center text-muted-foreground">
+                          <div className="flex flex-col items-center gap-2">
+                            <Waves className="h-12 w-12 text-muted-foreground/50" />
+                            <p className="text-lg font-medium">No bookings found</p>
+                            <p className="text-sm">Try adjusting your filters or create a new booking</p>
+                            <Link to="/pool/bookings/new">
+                              <Button variant="outline" className="mt-2">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Create First Booking
+                              </Button>
+                            </Link>
+                          </div>
                         </td>
                       </tr>
                     ) : (
                       bookings.map((booking) => (
-                        <tr key={booking._id} className="border-b last:border-0 hover:bg-muted/50">
+                        <tr key={booking._id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                          <td className="py-3 px-2">
+                            <span className="font-mono text-sm font-medium">
+                              {booking.bookingNumber}
+                            </span>
+                          </td>
                           <td className="py-3 px-2">
                             <div>
                               <p className="font-medium">{booking.customerName}</p>
-                              <p className="text-sm text-muted-foreground">{booking.email}</p>
-                              <p className="text-xs text-muted-foreground">{booking.phone}</p>
+                              {booking.email && (
+                                <p className="text-sm text-muted-foreground truncate max-w-[150px]">
+                                  {booking.email}
+                                </p>
+                              )}
+                              {booking.phone && (
+                                <p className="text-xs text-muted-foreground">{booking.phone}</p>
+                              )}
                             </div>
                           </td>
-                          <td className="py-3 px-2">{formatDate(booking.date)}</td>
-                          <td className="py-3 px-2">{formatTimeSlot(booking.timeSlot)}</td>
                           <td className="py-3 px-2">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-pool-light text-pool-foreground text-xs font-medium capitalize">
+                            <span className="text-sm whitespace-nowrap">
+                              {formatDate(booking.date)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-2">
+                            <span className="text-sm whitespace-nowrap">
+                              {formatTimeSlot(booking.timeSlot)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-2">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full bg-pool-light text-pool-foreground text-xs font-medium capitalize">
                               {booking.passType}
                             </span>
                           </td>
-                          <td className="py-3 px-2">{booking.persons}</td>
-                          <td className="py-3 px-2 font-medium">${booking.amount.toFixed(2)}</td>
+                          <td className="py-3 px-2">
+                            <span className="font-medium">{booking.persons}</span>
+                          </td>
+                          <td className="py-3 px-2">
+                            <span className="font-semibold text-pool">
+                              ${booking.amount?.toFixed(2) || '0.00'}
+                            </span>
+                          </td>
                           <td className="py-3 px-2">
                             <StatusBadge status={booking.paymentStatus} />
                           </td>
                           <td className="py-3 px-2">
-                            <div className="flex gap-2">
+                            <div className="flex items-center gap-2">
                               <Link to={`/pool/bookings/${booking._id}`}>
                                 <Button size="sm" variant="ghost" className="text-xs">
                                   View
@@ -240,7 +310,7 @@ export default function PoolBookings() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="text-xs"
+                                  className="text-xs text-green-600 hover:text-green-700 border-green-200 hover:border-green-300"
                                   onClick={() => handleStatusUpdate(booking._id, 'paid')}
                                 >
                                   Mark Paid
@@ -250,7 +320,7 @@ export default function PoolBookings() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="text-xs"
+                                  className="text-xs text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
                                   onClick={() => handleStatusUpdate(booking._id, 'cancelled')}
                                 >
                                   Cancel
@@ -266,34 +336,36 @@ export default function PoolBookings() {
               </div>
 
               {/* Pagination */}
-              <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                <p className="text-sm text-muted-foreground">
-                  Showing {((currentPage - 1) * itemsPerPage) + 1} to{' '}
-                  {Math.min(currentPage * itemsPerPage, totalBookings)} of{' '}
-                  {totalBookings} bookings
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="flex items-center px-3 text-sm">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
+              {bookings.length > 0 && (
+                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to{' '}
+                    {Math.min(currentPage * itemsPerPage, totalBookings)} of{' '}
+                    {totalBookings} bookings
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="flex items-center px-3 text-sm">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           )}
         </CardContent>
