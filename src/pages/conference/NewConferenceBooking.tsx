@@ -25,7 +25,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Building2, ArrowLeft, CalendarIcon, Clock, Users, CreditCard, Check, X } from 'lucide-react';
+import { Building2, ArrowLeft, CalendarIcon, Clock, Users, CreditCard, Check, X, Percent } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -48,6 +48,7 @@ const bookingSchema = z.object({
     equipmentRequired: z.boolean().default(false),
     specialRequirements: z.string().optional(),
     amount: z.number().min(0, 'Amount must be positive'),
+    discount: z.number().min(0, 'Discount must be positive').max(100000, 'Discount too high').default(0),
     advancePaid: z.number().min(0, 'Advance must be positive'),
     notes: z.string().optional(),
 });
@@ -100,6 +101,7 @@ export default function NewConferenceBooking() {
             equipmentRequired: false,
             specialRequirements: '',
             amount: 0,
+            discount: 0,
             advancePaid: 0,
             notes: '',
         },
@@ -177,10 +179,24 @@ export default function NewConferenceBooking() {
         setSelectedHall(hall);
     };
 
+    // Calculate discounted amount
+    const getDiscountedAmount = () => {
+        const amount = form.watch('amount') || 0;
+        const discount = form.watch('discount') || 0;
+        return amount - discount;
+    };
+
     const onSubmit = async (data: BookingFormData) => {
         try {
             setLoading(true);
             console.log('Submitting booking data:', data);
+
+            // Validate discount doesn't exceed amount
+            if (data.discount > data.amount) {
+                toast.error('Discount cannot exceed total amount');
+                setLoading(false);
+                return;
+            }
 
             // Clean up empty strings for optional fields
             const cleanedData = {
@@ -493,9 +509,47 @@ export default function NewConferenceBooking() {
                                         )}
                                     </div>
 
-                                    <div className="flex justify-between text-lg font-bold mt-4 pt-4 border-t">
-                                        <span>Total Amount</span>
-                                        <span className="text-conference">${form.watch('amount').toFixed(2)}</span>
+                                    <div className="flex justify-between text-base font-semibold mt-2 pt-2">
+                                        <span>Subtotal</span>
+                                        <span>${form.watch('amount').toFixed(2)}</span>
+                                    </div>
+
+                                    {/* Discount Field */}
+                                    <FormField
+                                        control={form.control}
+                                        name="discount"
+                                        render={({ field }) => (
+                                            <FormItem className="mt-2">
+                                                <div className="flex items-center gap-2">
+                                                    <Percent className="h-4 w-4 text-muted-foreground" />
+                                                    <FormLabel className="flex-1">Discount Amount ($)</FormLabel>
+                                                </div>
+                                                <FormControl>
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        value={field.value}
+                                                        onChange={(e) => {
+                                                            const val = parseFloat(e.target.value) || 0;
+                                                            if (val <= form.watch('amount')) {
+                                                                field.onChange(val);
+                                                            } else {
+                                                                toast.error('Discount cannot exceed total amount');
+                                                            }
+                                                        }}
+                                                        placeholder="Enter discount amount"
+                                                        className="text-right"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <div className="flex justify-between text-lg font-bold mt-4 pt-4 border-t border-dashed">
+                                        <span>Net Amount</span>
+                                        <span className="text-conference">${getDiscountedAmount().toFixed(2)}</span>
                                     </div>
                                 </div>
 
@@ -526,8 +580,8 @@ export default function NewConferenceBooking() {
                                         render={({ field }) => (
                                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                                                 <div className="space-y-0.5">
-                                                    <FormLabel>Catering Required</FormLabel>
-                                                    <p className="text-xs text-muted-foreground">Add catering service</p>
+                                                    <FormLabel>Catering</FormLabel>
+                                                    <p className="text-xs text-muted-foreground">+$500</p>
                                                 </div>
                                                 <FormControl>
                                                     <Switch
@@ -544,8 +598,8 @@ export default function NewConferenceBooking() {
                                         render={({ field }) => (
                                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                                                 <div className="space-y-0.5">
-                                                    <FormLabel>Equipment Required</FormLabel>
-                                                    <p className="text-xs text-muted-foreground">Add AV equipment</p>
+                                                    <FormLabel>Equipment</FormLabel>
+                                                    <p className="text-xs text-muted-foreground">+$300</p>
                                                 </div>
                                                 <FormControl>
                                                     <Switch

@@ -24,7 +24,8 @@ import {
     Briefcase,
     CheckSquare,
     XSquare,
-    AlertCircle
+    AlertCircle,
+    Percent
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
@@ -170,7 +171,8 @@ export default function ViewConferenceBooking() {
     const handleMarkPartial = async () => {
         try {
             setIsUpdating(true);
-            const response = await conferenceService.updatePaymentStatus(id!, 'partial', booking?.amount ? booking.amount / 2 : 0);
+            const netAmount = (booking?.amount || 0) - (booking?.discount || 0);
+            const response = await conferenceService.updatePaymentStatus(id!, 'partial', netAmount / 2);
             if (response.success) {
                 toast.success('Payment marked as partial');
                 await fetchBooking();
@@ -244,7 +246,8 @@ export default function ViewConferenceBooking() {
         );
     }
 
-    const balanceDue = (booking.amount || 0) - (booking.advancePaid || 0);
+    const netAmount = (booking.amount || 0) - (booking.discount || 0);
+    const balanceDue = netAmount - (booking.advancePaid || 0);
     const isBalanceDue = balanceDue > 0;
 
     return (
@@ -433,7 +436,7 @@ export default function ViewConferenceBooking() {
                                             {booking.cateringRequired ? (
                                                 <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                                                     <CheckSquare className="h-3 w-3 mr-1" />
-                                                    Required
+                                                    Required (+$500)
                                                 </Badge>
                                             ) : (
                                                 <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
@@ -447,7 +450,7 @@ export default function ViewConferenceBooking() {
                                             {booking.equipmentRequired ? (
                                                 <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                                                     <CheckSquare className="h-3 w-3 mr-1" />
-                                                    Required
+                                                    Required (+$300)
                                                 </Badge>
                                             ) : (
                                                 <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
@@ -520,6 +523,23 @@ export default function ViewConferenceBooking() {
                                 <span className="text-muted-foreground">Total Amount</span>
                                 <span className="font-medium">{formatCurrency(booking.amount || 0)}</span>
                             </div>
+
+                            {/* Discount Line */}
+                            {booking.discount > 0 && (
+                                <div className="flex justify-between text-sm text-success">
+                                    <span className="flex items-center gap-1">
+                                        <Percent className="h-3 w-3" />
+                                        Discount
+                                    </span>
+                                    <span>-{formatCurrency(booking.discount)}</span>
+                                </div>
+                            )}
+
+                            <div className="flex justify-between text-base font-semibold pt-2 border-t border-dashed">
+                                <span>Net Amount</span>
+                                <span className="text-conference">{formatCurrency(netAmount)}</span>
+                            </div>
+
                             <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Advance Paid</span>
                                 <span>{formatCurrency(booking.advancePaid || 0)}</span>
@@ -686,6 +706,64 @@ export default function ViewConferenceBooking() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Invoice Section */}
+            {booking.invoiceNumber && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <FileText className="h-5 w-5 text-conference" />
+                            Invoice Details
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <p className="text-sm text-muted-foreground">Invoice Number</p>
+                                <p className="font-medium">{booking.invoiceNumber}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Invoice Date</p>
+                                <p className="font-medium">
+                                    {booking.approvedAt ? format(new Date(booking.approvedAt), 'PPP') : 'N/A'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <Separator className="my-4" />
+
+                        <div className="space-y-2">
+                            <h4 className="font-medium mb-2">Invoice Summary</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="p-3 bg-muted rounded-lg">
+                                    <p className="text-xs text-muted-foreground">Subtotal</p>
+                                    <p className="text-lg font-semibold">{formatCurrency(booking.amount || 0)}</p>
+                                </div>
+                                {booking.discount > 0 && (
+                                    <div className="p-3 bg-success/10 rounded-lg">
+                                        <p className="text-xs text-muted-foreground">Discount</p>
+                                        <p className="text-lg font-semibold text-success">-{formatCurrency(booking.discount)}</p>
+                                    </div>
+                                )}
+                                <div className="p-3 bg-conference-light rounded-lg">
+                                    <p className="text-xs text-muted-foreground">Net Amount</p>
+                                    <p className="text-lg font-semibold text-conference">{formatCurrency(netAmount)}</p>
+                                </div>
+                                <div className="p-3 bg-muted rounded-lg">
+                                    <p className="text-xs text-muted-foreground">Paid Amount</p>
+                                    <p className="text-lg font-semibold">{formatCurrency(booking.advancePaid || 0)}</p>
+                                </div>
+                                <div className="p-3 bg-muted rounded-lg">
+                                    <p className="text-xs text-muted-foreground">Balance Due</p>
+                                    <p className={`text-lg font-semibold ${isBalanceDue ? 'text-destructive' : 'text-success'}`}>
+                                        {formatCurrency(balanceDue)}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }

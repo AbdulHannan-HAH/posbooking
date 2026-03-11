@@ -24,7 +24,8 @@ import {
     FileText,
     BarChart3,
     Loader2,
-    PieChart as PieChartIcon
+    PieChart as PieChartIcon,
+    Percent
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -112,8 +113,10 @@ export default function ConferenceReports() {
     };
 
     const handleExportCSV = () => {
-        const csvContent = 'Period,Bookings,Revenue,Attendees,Total Amount\n' +
-            revenueData.map(d => `${d._id},${d.bookings},${d.revenue},${d.attendees},${d.totalAmount}`).join('\n');
+        const csvContent = 'Period,Bookings,Attendees,Total Amount,Total Discount,Net Amount,Revenue\n' +
+            revenueData.map(d =>
+                `${d._id},${d.bookings},${d.attendees},${d.totalAmount},${d.totalDiscount || 0},${d.netAmount || d.totalAmount},${d.revenue}`
+            ).join('\n');
 
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
@@ -132,7 +135,11 @@ export default function ConferenceReports() {
     const totalBookings = revenueData.reduce((sum, d) => sum + d.bookings, 0);
     const totalAttendees = revenueData.reduce((sum, d) => sum + d.attendees, 0);
     const totalAmount = revenueData.reduce((sum, d) => sum + (d.totalAmount || 0), 0);
+    const totalDiscount = revenueData.reduce((sum, d) => sum + (d.totalDiscount || 0), 0);
+    const totalNetAmount = revenueData.reduce((sum, d) => sum + (d.netAmount || d.totalAmount || 0), 0);
     const avgRevenuePerBooking = totalBookings > 0 ? totalRevenue / totalBookings : 0;
+    const avgDiscountPerBooking = totalBookings > 0 ? totalDiscount / totalBookings : 0;
+    const discountPercentage = totalAmount > 0 ? (totalDiscount / totalAmount) * 100 : 0;
 
     // Colors for charts
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
@@ -242,7 +249,7 @@ export default function ConferenceReports() {
                         <StatCard
                             title="Total Revenue"
                             value={`$${totalRevenue.toLocaleString()}`}
-                            change={`${revenueData.length > 1 ? 'From period' : 'Current period'}`}
+                            change={`From ${revenueData.length} periods`}
                             changeType="positive"
                             icon={DollarSign}
                             iconClassName="gradient-conference"
@@ -273,6 +280,66 @@ export default function ConferenceReports() {
                         />
                     </div>
 
+                    {/* Discount Stats */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Card>
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Total Discount Given</p>
+                                        <p className="text-2xl font-bold">${totalDiscount.toLocaleString()}</p>
+                                    </div>
+                                    <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center">
+                                        <Percent className="h-6 w-6 text-success" />
+                                    </div>
+                                </div>
+                                <div className="mt-4">
+                                    <p className="text-sm text-muted-foreground">
+                                        {discountPercentage.toFixed(1)}% of total amount
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Average Discount/Booking</p>
+                                        <p className="text-2xl font-bold">${avgDiscountPerBooking.toFixed(2)}</p>
+                                    </div>
+                                    <div className="h-12 w-12 rounded-full bg-conference-light flex items-center justify-center">
+                                        <TrendingUp className="h-6 w-6 text-conference" />
+                                    </div>
+                                </div>
+                                <div className="mt-4">
+                                    <p className="text-sm text-muted-foreground">
+                                        Per booking average
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Net Amount</p>
+                                        <p className="text-2xl font-bold">${totalNetAmount.toLocaleString()}</p>
+                                    </div>
+                                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                                        <DollarSign className="h-6 w-6 text-primary" />
+                                    </div>
+                                </div>
+                                <div className="mt-4">
+                                    <p className="text-sm text-muted-foreground">
+                                        After discounts
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
                     {/* Charts Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Revenue Chart */}
@@ -294,9 +361,16 @@ export default function ConferenceReports() {
                                                         border: '1px solid hsl(var(--border))',
                                                         borderRadius: '8px'
                                                     }}
-                                                    formatter={(value) => [`$${value}`, 'Revenue']}
+                                                    formatter={(value, name) => {
+                                                        if (name === 'revenue') return [`$${value}`, 'Revenue'];
+                                                        if (name === 'totalDiscount') return [`$${value}`, 'Discount'];
+                                                        if (name === 'netAmount') return [`$${value}`, 'Net Amount'];
+                                                        return [`$${value}`, name];
+                                                    }}
                                                 />
                                                 <Bar dataKey="revenue" fill="hsl(var(--conference))" radius={[4, 4, 0, 0]} />
+                                                <Bar dataKey="totalDiscount" fill="#FF8042" radius={[4, 4, 0, 0]} />
+                                                <Bar dataKey="netAmount" fill="#00C49F" radius={[4, 4, 0, 0]} />
                                             </BarChart>
                                         </ResponsiveContainer>
                                     ) : (
@@ -349,7 +423,7 @@ export default function ConferenceReports() {
                         {/* Hall Utilization */}
                         <Card>
                             <CardHeader>
-                                <CardTitle className="text-lg">Hall Utilization</CardTitle>
+                                <CardTitle className="text-lg">Hall Performance</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="h-[300px]">
@@ -360,9 +434,11 @@ export default function ConferenceReports() {
                                                 <XAxis type="number" className="text-xs" />
                                                 <YAxis dataKey="_id" type="category" className="text-xs" width={100} />
                                                 <Tooltip
-                                                    formatter={(value, name) => {
+                                                    formatter={(value, name, props) => {
                                                         if (name === 'bookings') return [value, 'Bookings'];
                                                         if (name === 'revenue') return [`$${value}`, 'Revenue'];
+                                                        if (name === 'totalDiscount') return [`$${value}`, 'Discount'];
+                                                        if (name === 'netAmount') return [`$${value}`, 'Net Amount'];
                                                         return value;
                                                     }}
                                                     contentStyle={{
@@ -372,6 +448,7 @@ export default function ConferenceReports() {
                                                     }}
                                                 />
                                                 <Bar dataKey="bookings" fill="hsl(var(--conference))" radius={[0, 4, 4, 0]} />
+                                                <Bar dataKey="totalDiscount" fill="#FF8042" radius={[0, 4, 4, 0]} />
                                             </BarChart>
                                         </ResponsiveContainer>
                                     ) : (
@@ -410,7 +487,7 @@ export default function ConferenceReports() {
                                                 <Tooltip
                                                     formatter={(value, name, props) => [
                                                         value,
-                                                        `${props.payload._id}: $${props.payload.revenue}`
+                                                        `${props.payload._id}: $${props.payload.netAmount}`
                                                     ]}
                                                 />
                                                 <Legend />
@@ -440,28 +517,38 @@ export default function ConferenceReports() {
                                                 <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Period</th>
                                                 <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Bookings</th>
                                                 <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Attendees</th>
-                                                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Revenue</th>
                                                 <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Total Amount</th>
+                                                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Discount</th>
+                                                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Net Amount</th>
+                                                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Revenue</th>
                                                 <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Avg/Booking</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {revenueData.map((row, index) => (
-                                                <tr key={index} className="border-b last:border-0 hover:bg-muted/50">
-                                                    <td className="py-3 px-4 font-medium">{row._id}</td>
-                                                    <td className="py-3 px-4">{row.bookings}</td>
-                                                    <td className="py-3 px-4">{row.attendees}</td>
-                                                    <td className="py-3 px-4">${row.revenue.toLocaleString()}</td>
-                                                    <td className="py-3 px-4">${(row.totalAmount || 0).toLocaleString()}</td>
-                                                    <td className="py-3 px-4">${(row.revenue / row.bookings).toFixed(2)}</td>
-                                                </tr>
-                                            ))}
+                                            {revenueData.map((row, index) => {
+                                                const netAmount = row.netAmount || row.totalAmount;
+                                                const discount = row.totalDiscount || 0;
+                                                return (
+                                                    <tr key={index} className="border-b last:border-0 hover:bg-muted/50">
+                                                        <td className="py-3 px-4 font-medium">{row._id}</td>
+                                                        <td className="py-3 px-4">{row.bookings}</td>
+                                                        <td className="py-3 px-4">{row.attendees}</td>
+                                                        <td className="py-3 px-4">${(row.totalAmount || 0).toLocaleString()}</td>
+                                                        <td className="py-3 px-4 text-success">${discount.toLocaleString()}</td>
+                                                        <td className="py-3 px-4 font-medium">${netAmount.toLocaleString()}</td>
+                                                        <td className="py-3 px-4 text-conference">${row.revenue.toLocaleString()}</td>
+                                                        <td className="py-3 px-4">${(row.revenue / row.bookings).toFixed(2)}</td>
+                                                    </tr>
+                                                );
+                                            })}
                                             <tr className="border-t font-bold">
                                                 <td className="py-3 px-4">Total</td>
                                                 <td className="py-3 px-4">{totalBookings}</td>
                                                 <td className="py-3 px-4">{totalAttendees}</td>
-                                                <td className="py-3 px-4 text-conference">${totalRevenue.toLocaleString()}</td>
                                                 <td className="py-3 px-4">${totalAmount.toLocaleString()}</td>
+                                                <td className="py-3 px-4 text-success">${totalDiscount.toLocaleString()}</td>
+                                                <td className="py-3 px-4">${totalNetAmount.toLocaleString()}</td>
+                                                <td className="py-3 px-4 text-conference">${totalRevenue.toLocaleString()}</td>
                                                 <td className="py-3 px-4">${avgRevenuePerBooking.toFixed(2)}</td>
                                             </tr>
                                         </tbody>

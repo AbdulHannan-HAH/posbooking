@@ -18,6 +18,8 @@ export interface ConferenceBooking {
     equipmentRequired: boolean;
     specialRequirements?: string;
     amount: number;
+    discount: number;  // Added discount field
+    discountedAmount: number;  // Added discountedAmount field (amount - discount)
     advancePaid: number;
     paymentStatus: 'pending' | 'partial' | 'paid' | 'cancelled' | 'refunded';
     bookingStatus: 'pending' | 'approved' | 'confirmed' | 'completed' | 'cancelled';
@@ -29,6 +31,10 @@ export interface ConferenceBooking {
     approvedAt?: string;
     createdAt: string;
     updatedAt: string;
+
+    // Optional calculated fields (can be added by backend)
+    netAmount?: number;
+    balanceDue?: number;
 }
 
 export interface ConferenceHall {

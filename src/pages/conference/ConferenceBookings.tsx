@@ -10,7 +10,7 @@ import {
     SelectTrigger,
     SelectValue
 } from '@/components/ui/select';
-import { Building2, Plus, Search, Filter, ChevronLeft, ChevronRight, Loader2, Calendar, Eye } from 'lucide-react';
+import { Building2, Plus, Search, Filter, ChevronLeft, ChevronRight, Loader2, Calendar, Eye, Percent } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useConferenceService, type ConferenceBooking } from '@/services/conferenceService';
 import { toast } from 'sonner';
@@ -124,6 +124,14 @@ export default function ConferenceBookings() {
         return eventType.charAt(0).toUpperCase() + eventType.slice(1);
     };
 
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 2
+        }).format(amount || 0);
+    };
+
     return (
         <div className="space-y-6 animate-fade-in">
             {/* Header */}
@@ -227,68 +235,80 @@ export default function ConferenceBookings() {
                                                 </td>
                                             </tr>
                                         ) : (
-                                            bookings.map((booking) => (
-                                                <tr key={booking._id} className="border-b last:border-0 hover:bg-muted/50">
-                                                    <td className="py-3 px-2">
-                                                        <div>
-                                                            <p className="font-medium">{booking.clientName}</p>
-                                                            <p className="text-sm text-muted-foreground">{booking.eventName}</p>
-                                                            {booking.company && (
-                                                                <p className="text-xs text-muted-foreground">{booking.company}</p>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-3 px-2">
-                                                        <div className="flex items-center gap-1">
-                                                            <Calendar className="h-3 w-3 text-muted-foreground" />
-                                                            <span className="text-sm">{formatDate(booking.startDate)}</span>
-                                                        </div>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {booking.startTime} - {booking.endTime}
-                                                        </p>
-                                                    </td>
-                                                    <td className="py-3 px-2">
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded bg-conference-light text-conference-foreground text-xs font-medium">
-                                                            {getHallDisplay(booking.hallType)}
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3 px-2">{booking.attendees}</td>
-                                                    <td className="py-3 px-2">
-                                                        <div>
-                                                            <p className="font-medium">${booking.amount.toFixed(2)}</p>
+                                            bookings.map((booking) => {
+                                                const netAmount = (booking.amount || 0) - (booking.discount || 0);
+                                                return (
+                                                    <tr key={booking._id} className="border-b last:border-0 hover:bg-muted/50">
+                                                        <td className="py-3 px-2">
+                                                            <div>
+                                                                <p className="font-medium">{booking.clientName}</p>
+                                                                <p className="text-sm text-muted-foreground">{booking.eventName}</p>
+                                                                {booking.company && (
+                                                                    <p className="text-xs text-muted-foreground">{booking.company}</p>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-3 px-2">
+                                                            <div className="flex items-center gap-1">
+                                                                <Calendar className="h-3 w-3 text-muted-foreground" />
+                                                                <span className="text-sm">{formatDate(booking.startDate)}</span>
+                                                            </div>
                                                             <p className="text-xs text-muted-foreground">
-                                                                Paid: ${booking.advancePaid.toFixed(2)}
+                                                                {booking.startTime} - {booking.endTime}
                                                             </p>
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-3 px-2">
-                                                        <StatusBadge status={booking.bookingStatus} />
-                                                    </td>
-                                                    <td className="py-3 px-2">
-                                                        <StatusBadge status={booking.paymentStatus} />
-                                                    </td>
-                                                    <td className="py-3 px-2">
-                                                        <div className="flex gap-2">
-                                                            <Link to={`/conference/bookings/${booking._id}`}>
-                                                                <Button size="sm" variant="ghost" className="text-xs">
-                                                                    <Eye className="h-3 w-3 mr-1" />
-                                                                    View
-                                                                </Button>
-                                                            </Link>
-                                                            {booking.bookingStatus === 'pending' && (
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="outline"
-                                                                    className="text-xs"
-                                                                    onClick={() => handleStatusUpdate(booking._id, 'approved')}
-                                                                >
-                                                                    Approve
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))
+                                                        </td>
+                                                        <td className="py-3 px-2">
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-conference-light text-conference-foreground text-xs font-medium">
+                                                                {getHallDisplay(booking.hallType)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 px-2">{booking.attendees}</td>
+                                                        <td className="py-3 px-2">
+                                                            <div>
+                                                                <p className="font-medium">{formatCurrency(booking.amount)}</p>
+                                                                {booking.discount > 0 && (
+                                                                    <p className="text-xs text-success flex items-center gap-1">
+                                                                        <Percent className="h-3 w-3" />
+                                                                        Discount: {formatCurrency(booking.discount)}
+                                                                    </p>
+                                                                )}
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    Net: {formatCurrency(netAmount)}
+                                                                </p>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    Paid: {formatCurrency(booking.advancePaid)}
+                                                                </p>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-3 px-2">
+                                                            <StatusBadge status={booking.bookingStatus} />
+                                                        </td>
+                                                        <td className="py-3 px-2">
+                                                            <StatusBadge status={booking.paymentStatus} />
+                                                        </td>
+                                                        <td className="py-3 px-2">
+                                                            <div className="flex gap-2">
+                                                                <Link to={`/conference/bookings/${booking._id}`}>
+                                                                    <Button size="sm" variant="ghost" className="text-xs">
+                                                                        <Eye className="h-3 w-3 mr-1" />
+                                                                        View
+                                                                    </Button>
+                                                                </Link>
+                                                                {booking.bookingStatus === 'pending' && (
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        className="text-xs"
+                                                                        onClick={() => handleStatusUpdate(booking._id, 'approved')}
+                                                                    >
+                                                                        Approve
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
                                         )}
                                     </tbody>
                                 </table>
