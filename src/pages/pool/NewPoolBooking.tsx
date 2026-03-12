@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Waves, ArrowLeft, CalendarIcon, Clock, Users, CreditCard, Loader2 } from 'lucide-react';
+import { Waves, ArrowLeft, CalendarIcon, Clock, Users, CreditCard, Loader2, Percent } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -38,6 +38,7 @@ const bookingSchema = z.object({
   timeSlot: z.string({ required_error: 'Please select a time slot' }),
   passType: z.string({ required_error: 'Please select a pass type' }),
   persons: z.number().min(1, 'At least 1 person required').max(10, 'Maximum 10 persons per booking'),
+  discount: z.number().min(0, 'Discount cannot be negative').max(100000, 'Discount amount too high').optional(),
   paymentStatus: z.enum(['paid', 'pending']),
   notes: z.string().optional(),
 });
@@ -62,6 +63,7 @@ export default function NewPoolBooking() {
       email: '',
       phone: '',
       persons: 1,
+      discount: 0,
       paymentStatus: 'pending',
       notes: '',
     },
@@ -69,6 +71,7 @@ export default function NewPoolBooking() {
 
   const selectedPassType = ticketPrices.find(p => p.passType === form.watch('passType'));
   const personsCount = form.watch('persons') || 1;
+  const discountAmount = form.watch('discount') || 0;
 
   useEffect(() => {
     fetchData();
@@ -127,12 +130,27 @@ export default function NewPoolBooking() {
     }
   };
 
-  const calculateTotal = () => {
+  const getPassTypeDisplay = (passType: string) => {
+    const displayMap: Record<string, string> = {
+      'daily': 'Daily Pass',
+      'family': 'Family Pass',
+      'hourly': 'Others Pass'
+    };
+    return displayMap[passType] || passType;
+  };
+
+  const calculateSubtotal = () => {
     if (!selectedPassType) return 0;
     if (selectedPassType.passType === 'family') {
       return selectedPassType.price;
     }
     return selectedPassType.price * personsCount;
+  };
+
+  const calculateTotal = () => {
+    const subtotal = calculateSubtotal();
+    const discount = discountAmount || 0;
+    return Math.max(0, subtotal - discount);
   };
 
   const onSubmit = async (data: BookingFormData) => {
@@ -147,6 +165,7 @@ export default function NewPoolBooking() {
         timeSlot: data.timeSlot,
         passType: data.passType,
         persons: data.persons,
+        discount: data.discount || 0,
         paymentStatus: data.paymentStatus,
         notes: data.notes || '',
       };
@@ -170,6 +189,7 @@ export default function NewPoolBooking() {
           timeSlot: data.timeSlot,
           passType: data.passType,
           persons: 1,
+          discount: 0,
           paymentStatus: 'pending',
           notes: '',
         });
@@ -192,6 +212,9 @@ export default function NewPoolBooking() {
   const handleRetry = () => {
     fetchData();
   };
+
+  const subtotal = calculateSubtotal();
+  const total = calculateTotal();
 
   if (loading) {
     return (
@@ -333,7 +356,7 @@ export default function NewPoolBooking() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Pass Type</span>
-                      <span className="font-medium">{selectedPassType?.description || '-'}</span>
+                      <span className="font-medium">{selectedPassType ? getPassTypeDisplay(selectedPassType.passType) : '-'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Persons</span>
@@ -343,13 +366,47 @@ export default function NewPoolBooking() {
                       <span className="text-muted-foreground">Price per unit</span>
                       <span className="font-medium">${selectedPassType?.price || 0}</span>
                     </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span className="font-medium">${subtotal}</span>
+                    </div>
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-pool">
+                        <span className="text-muted-foreground">Discount</span>
+                        <span className="font-medium">-${discountAmount}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="border-t pt-4">
                     <div className="flex justify-between text-lg font-bold">
                       <span>Total</span>
-                      <span className="text-pool">${calculateTotal()}</span>
+                      <span className="text-pool">${total}</span>
                     </div>
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="discount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1">
+                          <Percent className="h-4 w-4" />
+                          Discount Amount ($)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="Enter discount amount"
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}
@@ -501,7 +558,7 @@ export default function NewPoolBooking() {
                               )}
                               onClick={() => field.onChange(pass.passType)}
                             >
-                              <p className="font-semibold">{pass.passType.charAt(0).toUpperCase() + pass.passType.slice(1)} Pass</p>
+                              <p className="font-semibold">{getPassTypeDisplay(pass.passType)}</p>
                               <p className="text-2xl font-bold text-pool mt-1">${pass.price}</p>
                               <p className="text-xs text-muted-foreground mt-1">{pass.description}</p>
                             </div>
@@ -576,8 +633,10 @@ export default function NewPoolBooking() {
             phone: bookingData.phone,
             date: format(new Date(bookingData.date), 'PPP'),
             timeSlot: timeSlots.find(s => s.value === bookingData.timeSlot)?.label || bookingData.timeSlot,
-            passType: ticketPrices.find(p => p.pType === bookingData.passType)?.description || bookingData.passType,
+            passType: getPassTypeDisplay(bookingData.passType),
             persons: bookingData.persons,
+            subtotal: bookingData.subtotal,
+            discount: bookingData.discount,
             amount: bookingData.amount,
             paymentStatus: bookingData.paymentStatus,
           }}

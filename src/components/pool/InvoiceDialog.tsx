@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { Printer, Download, Waves } from 'lucide-react';
+import { Printer, Download, Waves, Percent } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 interface BookingDetails {
@@ -19,6 +19,8 @@ interface BookingDetails {
   timeSlot: string;
   passType: string;
   persons: number;
+  subtotal?: number;
+  discount?: number;
   amount: number;
   paymentStatus: 'paid' | 'pending';
 }
@@ -129,6 +131,13 @@ export function InvoiceDialog({ open, onClose, booking }: InvoiceDialogProps) {
               font-size: 10px;
               color: #333;
               margin-left: 8px;
+            }
+            .discount-row {
+              display: flex;
+              justify-content: space-between;
+              font-size: 11px;
+              color: #4a6cf7;
+              margin-top: 4px;
             }
             .totals-section {
               border-top: 1px dashed #000;
@@ -262,15 +271,27 @@ export function InvoiceDialog({ open, onClose, booking }: InvoiceDialogProps) {
                   ${booking.passType}
                   <div class="item-details">${booking.persons} person(s)</div>
                 </div>
-                <span>$${booking.amount.toFixed(2)}</span>
+                <span>$${booking.subtotal?.toFixed(2) || booking.amount.toFixed(2)}</span>
               </div>
+              ${booking.discount && booking.discount > 0 ? `
+              <div class="discount-row">
+                <span>Discount</span>
+                <span>-$${booking.discount.toFixed(2)}</span>
+              </div>
+              ` : ''}
             </div>
 
             <div class="totals-section">
               <div class="total-row">
                 <span>Subtotal:</span>
-                <span>$${booking.amount.toFixed(2)}</span>
+                <span>$${booking.subtotal?.toFixed(2) || booking.amount.toFixed(2)}</span>
               </div>
+              ${booking.discount && booking.discount > 0 ? `
+              <div class="total-row">
+                <span>Discount:</span>
+                <span>-$${booking.discount.toFixed(2)}</span>
+              </div>
+              ` : ''}
               <div class="total-row">
                 <span>Tax (0%):</span>
                 <span>$0.00</span>
@@ -304,7 +325,7 @@ export function InvoiceDialog({ open, onClose, booking }: InvoiceDialogProps) {
 
     printWindow.document.close();
     printWindow.focus();
-    
+
     setTimeout(() => {
       printWindow.print();
     }, 250);
@@ -400,21 +421,33 @@ export function InvoiceDialog({ open, onClose, booking }: InvoiceDialogProps) {
               <span>ITEM</span>
               <span>AMOUNT</span>
             </div>
-            <div className="flex justify-between text-xs">
+            <div className="flex justify-between text-xs mb-1">
               <div>
                 <p className="font-medium">{booking.passType}</p>
                 <p className="text-muted-foreground">{booking.persons} person(s)</p>
               </div>
-              <span className="font-medium">${booking.amount.toFixed(2)}</span>
+              <span className="font-medium">${booking.subtotal?.toFixed(2) || booking.amount.toFixed(2)}</span>
             </div>
+            {booking.discount && booking.discount > 0 && (
+              <div className="flex justify-between text-xs text-pool border-t border-dashed pt-1 mt-1">
+                <span>Discount</span>
+                <span>-${booking.discount.toFixed(2)}</span>
+              </div>
+            )}
           </div>
 
           {/* Totals */}
           <div className="border-t border-dashed pt-2 space-y-1 text-xs">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Subtotal:</span>
-              <span>${booking.amount.toFixed(2)}</span>
+              <span>$${booking.subtotal?.toFixed(2) || booking.amount.toFixed(2)}</span>
             </div>
+            {booking.discount && booking.discount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Discount:</span>
+                <span>-${booking.discount.toFixed(2)}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Tax (0%):</span>
               <span>$0.00</span>

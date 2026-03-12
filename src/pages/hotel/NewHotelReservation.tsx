@@ -1,3 +1,4 @@
+// pages/hotel/NewHotelReservation.tsx - WITH DISCOUNT
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
@@ -36,7 +37,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 const reservationSchema = z.object({
     guestName: z.string().min(2, 'Name must be at least 2 characters').max(100),
     email: z.string().email('Invalid email address').optional().or(z.literal('')),
-    phone: z.string().optional().or(z.literal('')), // Phone is now optional
+    phone: z.string().optional().or(z.literal('')),
     checkIn: z.date({ required_error: 'Please select check-in date' }),
     checkOut: z.date({ required_error: 'Please select check-out date' }),
     roomType: z.string({ required_error: 'Please select a room type' }),
@@ -66,10 +67,8 @@ export default function NewHotelReservation() {
     const [selectedServices, setSelectedServices] = useState<SelectedService[]>([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-
-    const [manualRoomSelection, setManualRoomSelection] = useState(false); // ✅ New flag
-    // const [manualRoomSelection, setManualRoomSelection] = useState(false);
-    // const selectedRoomNumber = form.watch('roomNumber');
+    const [discount, setDiscount] = useState<number>(0); // NEW: discount state
+    const [manualRoomSelection, setManualRoomSelection] = useState(false);
 
     const form = useForm<ReservationFormData>({
         resolver: zodResolver(reservationSchema),
@@ -99,7 +98,7 @@ export default function NewHotelReservation() {
     }, []);
 
     const handleRoomSelection = (roomNumber: string) => {
-        setManualRoomSelection(true); // user clicked
+        setManualRoomSelection(true);
         form.setValue('roomNumber', roomNumber, { shouldValidate: true });
     };
 
@@ -139,11 +138,8 @@ export default function NewHotelReservation() {
         }
     }, [checkInDate, checkOutDate, selectedRoomType, hotelService, manualRoomSelection, selectedRoomNumber]);
 
-
-    // useEffect only triggers when checkIn, checkOut, or roomType change
     useEffect(() => {
         fetchAvailableRooms();
-        // Reset manual selection whenever room type or dates change
         setManualRoomSelection(false);
     }, [checkInDate, checkOutDate, selectedRoomType, fetchAvailableRooms]);
 
@@ -175,10 +171,9 @@ export default function NewHotelReservation() {
     const handleRoomTypeChange = (roomTypeId: string) => {
         form.setValue('roomType', roomTypeId);
         form.setValue('roomNumber', '');
-        setManualRoomSelection(false); // reset manual selection
+        setManualRoomSelection(false);
     };
 
-    // Services functions remain same
     const handleServiceSelection = useCallback((service: HotelService) => {
         setSelectedServices(prev => {
             const existing = prev.find(s => s.service._id === service._id);
@@ -205,14 +200,18 @@ export default function NewHotelReservation() {
         setSelectedServices(prev => prev.filter(item => item.service._id !== serviceId));
     }, []);
 
-    // Calculation functions remain same
+    // Calculation functions with discount
     const calculateRoomTotal = () => selectedRoomType ? selectedRoomType.basePrice * nights : 0;
     const calculateServicesTotal = () => selectedServices.reduce((sum, item) => sum + item.service.price * item.quantity, 0);
+    const calculateSubtotal = () => calculateRoomTotal() + calculateServicesTotal();
     const calculateTotal = () => {
-        const roomTotal = calculateRoomTotal();
-        const servicesTotal = calculateServicesTotal();
-        const subtotal = roomTotal + servicesTotal;
-        return { roomTotal, servicesTotal, subtotal, tax: 0, total: subtotal };
+        const subtotal = calculateSubtotal();
+        const validDiscount = Math.min(discount, subtotal);
+        return subtotal - validDiscount;
+    };
+
+    const handleDiscountChange = (value: number) => {
+        setDiscount(Math.max(0, value));
     };
 
     const onSubmit = async (data: ReservationFormData) => {
@@ -225,6 +224,7 @@ export default function NewHotelReservation() {
         try {
             setSubmitting(true);
             const totals = calculateTotal();
+            const subtotal = calculateSubtotal();
             const extraCharges = selectedServices.map(item => ({
                 service: item.service.name,
                 amount: item.service.price,
@@ -234,7 +234,7 @@ export default function NewHotelReservation() {
             const reservationPayload = {
                 guestName: data.guestName,
                 email: data.email || '',
-                phone: data.phone || '', // Send empty string if not provided
+                phone: data.phone || '',
                 checkIn: format(data.checkIn, 'yyyy-MM-dd'),
                 checkOut: format(data.checkOut, 'yyyy-MM-dd'),
                 roomType: selectedRoomType?.name || '',
@@ -243,8 +243,10 @@ export default function NewHotelReservation() {
                 children: data.children,
                 paymentStatus: data.paymentStatus,
                 specialRequests: data.specialRequests || '',
-                totalAmount: totals.total,
                 extraCharges,
+                discount, // include discount
+                subTotal: subtotal,
+                totalAmount: totals,
             };
 
             const response = await hotelService.createReservation(reservationPayload);
@@ -269,6 +271,7 @@ export default function NewHotelReservation() {
                 });
                 setSelectedServices([]);
                 setManualRoomSelection(false);
+                setDiscount(0);
             } else {
                 toast.error(response.message || 'Failed to create reservation');
             }
@@ -296,7 +299,12 @@ export default function NewHotelReservation() {
         );
     }
 
-    const totals = calculateTotal();
+    const totals = {
+        roomTotal: calculateRoomTotal(),
+        servicesTotal: calculateServicesTotal(),
+        subtotal: calculateSubtotal(),
+        total: calculateTotal()
+    };
 
     return (
         <div className="space-y-6 animate-fade-in">
@@ -506,6 +514,24 @@ export default function NewHotelReservation() {
                                     </div>
                                 )}
 
+                                {/* Discount Input */}
+                                <div className="border-t pt-4">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-medium">Discount ($)</span>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={discount}
+                                            onChange={(e) => handleDiscountChange(parseFloat(e.target.value) || 0)}
+                                            className="w-32 text-right"
+                                        />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Fixed amount subtracted from subtotal.
+                                    </p>
+                                </div>
+
                                 <div className="border-t pt-4 space-y-2">
                                     <div className="flex justify-between">
                                         <span className="text-muted-foreground">Room Total</span>
@@ -521,7 +547,12 @@ export default function NewHotelReservation() {
                                         <span className="text-muted-foreground">Subtotal</span>
                                         <span>${totals.subtotal.toFixed(2)}</span>
                                     </div>
-                                    {/* Tax removed as per requirement */}
+                                    {discount > 0 && (
+                                        <div className="flex justify-between text-success">
+                                            <span className="text-muted-foreground">Discount</span>
+                                            <span>-${discount.toFixed(2)}</span>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between text-lg font-bold border-t pt-2">
                                         <span>Total</span>
                                         <span className="text-hotel">${totals.total.toFixed(2)}</span>
@@ -697,7 +728,7 @@ export default function NewHotelReservation() {
                             </CardContent>
                         </Card>
 
-                        {/* Room Selection - FIXED */}
+                        {/* Room Selection */}
                         <Card className="lg:col-span-2">
                             <CardHeader>
                                 <CardTitle className="text-lg flex items-center gap-2">
@@ -903,6 +934,7 @@ export default function NewHotelReservation() {
                         roomRate: selectedRoomType?.basePrice || 0,
                         totalAmount: reservationData.totalAmount,
                         paymentStatus: reservationData.paymentStatus,
+                        discount: reservationData.discount || 0, // pass discount
                     }}
                     services={selectedServices.map(item => ({
                         name: item.service.name,

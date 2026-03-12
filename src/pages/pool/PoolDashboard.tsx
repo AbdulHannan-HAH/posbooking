@@ -3,7 +3,7 @@ import { StatCard } from '@/components/ui/StatCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Waves, Users, DollarSign, Clock, Plus, TrendingUp } from 'lucide-react';
+import { Waves, Users, DollarSign, Clock, Plus, TrendingUp, Percent } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Progress } from '@/components/ui/progress';
 import { usePoolService } from '@/services/poolService';
@@ -16,6 +16,7 @@ export default function PoolDashboard() {
     currentCapacity: 0,
     maxCapacity: 0,
     dailyRevenue: 0,
+    todayDiscounts: 0,
     pendingPayments: 0,
     capacityPercentage: 0,
   });
@@ -44,6 +45,7 @@ export default function PoolDashboard() {
           currentCapacity: statsResponse.stats.currentCapacity || 0,
           maxCapacity: 50,
           dailyRevenue: statsResponse.stats.todayRevenue || 0,
+          todayDiscounts: statsResponse.stats.todayDiscounts || 0,
           pendingPayments: statsResponse.stats.pendingPayments || 0,
           capacityPercentage,
         });
@@ -57,6 +59,15 @@ export default function PoolDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getPassTypeDisplay = (passType: string) => {
+    const displayMap: Record<string, string> = {
+      'daily': 'Daily',
+      'family': 'Family',
+      'hourly': 'Others'
+    };
+    return displayMap[passType] || passType;
   };
 
   if (loading) {
@@ -92,7 +103,7 @@ export default function PoolDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           title="Today's Bookings"
           value={stats.todayBookings}
@@ -112,10 +123,18 @@ export default function PoolDashboard() {
         <StatCard
           title="Daily Revenue"
           value={`$${stats.dailyRevenue}`}
-          change="+12% from average"
+          change="After discounts"
           changeType="positive"
           icon={DollarSign}
           iconClassName="gradient-conference"
+        />
+        <StatCard
+          title="Today's Discounts"
+          value={`$${stats.todayDiscounts}`}
+          change="Total discounts given"
+          changeType="neutral"
+          icon={Percent}
+          iconClassName="gradient-hotel"
         />
         <StatCard
           title="Pending Payments"
@@ -174,7 +193,8 @@ export default function PoolDashboard() {
                     <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Customer</th>
                     <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Pass Type</th>
                     <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Persons</th>
-                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Time</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Discount</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Amount</th>
                     <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Status</th>
                   </tr>
                 </thead>
@@ -184,11 +204,18 @@ export default function PoolDashboard() {
                       <td className="py-3 px-2 font-medium">{booking.customerName}</td>
                       <td className="py-3 px-2">
                         <span className="inline-flex items-center px-2 py-0.5 rounded bg-pool-light text-pool-foreground text-xs font-medium">
-                          {booking.passType}
+                          {getPassTypeDisplay(booking.passType)}
                         </span>
                       </td>
                       <td className="py-3 px-2">{booking.persons}</td>
-                      <td className="py-3 px-2 text-muted-foreground">{booking.timeSlot}</td>
+                      <td className="py-3 px-2">
+                        {booking.discount && booking.discount > 0 ? (
+                          <span className="text-pool">${booking.discount}</span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-2 font-medium">${booking.amount}</td>
                       <td className="py-3 px-2">
                         <StatusBadge status={booking.paymentStatus} />
                       </td>

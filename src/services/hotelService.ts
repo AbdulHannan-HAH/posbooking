@@ -1,11 +1,10 @@
-// services/hotelService.ts - FIXED
+// services/hotelService.ts - FIXED (already discount-ready)
 import { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export const useHotelService = () => {
     const { authFetch } = useAuth();
 
-    // ✅ Wrap the entire return object in useMemo
     return useMemo(() => ({
         // Dashboard
         getDashboardStats: async () => {
@@ -378,10 +377,10 @@ export const useHotelService = () => {
                 return { success: false, message: error.message };
             }
         },
-    }), [authFetch]); // ✅ Only recreate when authFetch changes
+    }), [authFetch]);
 };
 
-// ... rest of your type exports remain the same
+// Type exports (already includes discount)
 export type Room = {
     _id: string;
     roomNumber: string;
@@ -436,7 +435,7 @@ export type Reservation = {
     }[];
     subTotal: number;
     tax: number;
-    discount: number;
+    discount: number; // Already present
     totalAmount: number;
     paymentStatus: 'paid' | 'pending' | 'partial';
     reservationStatus: 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'no_show';

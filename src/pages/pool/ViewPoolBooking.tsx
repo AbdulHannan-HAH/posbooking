@@ -17,7 +17,8 @@ import {
   Edit,
   Trash2,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Percent
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
@@ -134,9 +135,9 @@ export default function ViewPoolBooking() {
 
   const getPassTypeDisplay = (passType: string) => {
     const typeMap: Record<string, string> = {
-      'hourly': 'Hourly Pass',
       'daily': 'Daily Pass',
-      'family': 'Family Pass'
+      'family': 'Family Pass',
+      'hourly': 'Others Pass' // Changed from 'Hourly Pass' to 'Others Pass'
     };
     return typeMap[passType] || passType;
   };
@@ -346,12 +347,18 @@ export default function ViewPoolBooking() {
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{getPassTypeDisplay(booking.passType)}</span>
-                <span>${(booking.amount / booking.persons).toFixed(2)} × {booking.persons}</span>
+                <span>${(booking.subtotal / booking.persons).toFixed(2)} × {booking.persons}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span>${booking.amount.toFixed(2)}</span>
+                <span>${booking.subtotal.toFixed(2)}</span>
               </div>
+              {booking.discount > 0 && (
+                <div className="flex justify-between text-sm text-pool">
+                  <span className="text-muted-foreground">Discount</span>
+                  <span>-${booking.discount.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Tax</span>
                 <span>$0.00</span>
@@ -400,6 +407,8 @@ export default function ViewPoolBooking() {
             timeSlot: formatTimeSlot(booking.timeSlot),
             passType: getPassTypeDisplay(booking.passType),
             persons: booking.persons,
+            subtotal: booking.subtotal,
+            discount: booking.discount,
             amount: booking.amount,
             paymentStatus: booking.paymentStatus,
           }}

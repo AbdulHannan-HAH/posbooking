@@ -1,4 +1,4 @@
-// pages/hotel/ViewHotelReservation.tsx - UPDATED
+// pages/hotel/ViewHotelReservation.tsx - WITH DISPLAY OF DISCOUNT
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -387,6 +387,13 @@ export default function ViewHotelReservation() {
                                 <span className="text-muted-foreground">Subtotal</span>
                                 <span>${reservation.subTotal.toFixed(2)}</span>
                             </div>
+                            {/* Discount line */}
+                            {reservation.discount > 0 && (
+                                <div className="flex justify-between text-sm text-success">
+                                    <span className="text-muted-foreground">Discount</span>
+                                    <span>-${reservation.discount.toFixed(2)}</span>
+                                </div>
+                            )}
                             {/* Tax removed */}
                             {reservation.discount > 0 && (
                                 <div className="flex justify-between text-sm">
@@ -452,6 +459,7 @@ export default function ViewHotelReservation() {
                         roomRate: reservation.roomRate,
                         totalAmount: reservation.totalAmount,
                         paymentStatus: reservation.paymentStatus,
+                        discount: reservation.discount || 0, // pass discount
                     }}
                     services={reservation.extraCharges?.map((charge: any) => ({
                         name: charge.service,

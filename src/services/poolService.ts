@@ -19,6 +19,7 @@ export const usePoolService = () => {
                 stats: {
                     todayBookings: 0,
                     todayRevenue: 0,
+                    todayDiscounts: 0,
                     pendingPayments: 0,
                     currentCapacity: 0,
                     maxCapacity: 50,
@@ -398,6 +399,8 @@ export type Booking = {
     timeSlot: string;
     passType: string;
     persons: number;
+    subtotal: number;
+    discount: number;
     amount: number;
     paymentStatus: 'paid' | 'pending' | 'cancelled';
     notes?: string;

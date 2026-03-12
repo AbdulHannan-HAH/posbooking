@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { Waves, Plus, Search, Filter, ChevronLeft, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
+import { Waves, Plus, Search, Filter, ChevronLeft, ChevronRight, Loader2, RefreshCw, Percent } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { usePoolService } from '@/services/poolService';
 import { toast } from 'sonner';
@@ -138,6 +138,15 @@ export default function PoolBookings() {
     return timeMap[timeSlot] || timeSlot;
   };
 
+  const getPassTypeDisplay = (passType: string) => {
+    const displayMap: Record<string, string> = {
+      'daily': 'Daily',
+      'family': 'Family',
+      'hourly': 'Others'
+    };
+    return displayMap[passType] || passType;
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -230,6 +239,8 @@ export default function PoolBookings() {
                       <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Time Slot</th>
                       <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Pass</th>
                       <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Persons</th>
+                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Subtotal</th>
+                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Discount</th>
                       <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Amount</th>
                       <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Status</th>
                       <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Actions</th>
@@ -238,7 +249,7 @@ export default function PoolBookings() {
                   <tbody>
                     {bookings.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="py-12 text-center text-muted-foreground">
+                        <td colSpan={11} className="py-12 text-center text-muted-foreground">
                           <div className="flex flex-col items-center gap-2">
                             <Waves className="h-12 w-12 text-muted-foreground/50" />
                             <p className="text-lg font-medium">No bookings found</p>
@@ -285,11 +296,26 @@ export default function PoolBookings() {
                           </td>
                           <td className="py-3 px-2">
                             <span className="inline-flex items-center px-2 py-1 rounded-full bg-pool-light text-pool-foreground text-xs font-medium capitalize">
-                              {booking.passType}
+                              {getPassTypeDisplay(booking.passType)}
                             </span>
                           </td>
                           <td className="py-3 px-2">
                             <span className="font-medium">{booking.persons}</span>
+                          </td>
+                          <td className="py-3 px-2">
+                            <span className="font-medium">
+                              ${booking.subtotal?.toFixed(2) || booking.amount?.toFixed(2)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-2">
+                            {booking.discount && booking.discount > 0 ? (
+                              <span className="inline-flex items-center gap-1 text-pool">
+                                <Percent className="h-3 w-3" />
+                                ${booking.discount.toFixed(2)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
                           </td>
                           <td className="py-3 px-2">
                             <span className="font-semibold text-pool">

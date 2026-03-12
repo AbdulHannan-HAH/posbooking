@@ -1,4 +1,4 @@
-// components/hotel/InvoiceDialog.tsx - UPDATED (NO TAX)
+// components/hotel/InvoiceDialog.tsx - UPDATED WITH DISCOUNT
 import { useRef } from 'react';
 import {
     Dialog,
@@ -36,6 +36,7 @@ interface InvoiceDialogProps {
         roomRate: number;
         totalAmount: number;
         paymentStatus: 'paid' | 'pending' | 'partial';
+        discount?: number; // ✅ Add discount as optional
     };
     services?: ServiceItem[];
 }
@@ -46,7 +47,8 @@ export function InvoiceDialog({ open, onClose, reservation, services = [] }: Inv
     const roomTotal = reservation.roomRate * reservation.nights;
     const servicesTotal = services.reduce((sum, service) => sum + service.total, 0);
     const subtotal = roomTotal + servicesTotal;
-    const total = subtotal; // No tax
+    const discount = reservation.discount || 0;
+    const total = subtotal - discount; // No tax
 
     const handlePrint = () => {
         const printContent = invoiceRef.current;
@@ -70,6 +72,13 @@ export function InvoiceDialog({ open, onClose, reservation, services = [] }: Inv
                         <span>$${service.total.toFixed(2)}</span>
                     </div>
                 `).join('')}
+            </div>
+        ` : '';
+
+        const discountHTML = discount > 0 ? `
+            <div class="total-row">
+                <span>Discount:</span>
+                <span>-$${discount.toFixed(2)}</span>
             </div>
         ` : '';
 
@@ -205,6 +214,11 @@ export function InvoiceDialog({ open, onClose, reservation, services = [] }: Inv
                                 <span>$${servicesTotal.toFixed(2)}</span>
                             </div>
                             ` : ''}
+                            <div class="total-row">
+                                <span>Subtotal:</span>
+                                <span>$${subtotal.toFixed(2)}</span>
+                            </div>
+                            ${discountHTML}
                             <div class="total-row grand-total">
                                 <span>TOTAL:</span>
                                 <span>$${total.toFixed(2)}</span>
@@ -371,6 +385,17 @@ export function InvoiceDialog({ open, onClose, reservation, services = [] }: Inv
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Services Total:</span>
                                 <span>${servicesTotal.toFixed(2)}</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Subtotal:</span>
+                            <span>${subtotal.toFixed(2)}</span>
+                        </div>
+                        {/* Discount line */}
+                        {discount > 0 && (
+                            <div className="flex justify-between text-success">
+                                <span className="text-muted-foreground">Discount:</span>
+                                <span>-${discount.toFixed(2)}</span>
                             </div>
                         )}
                         <div className="flex justify-between text-base font-bold border-t pt-2 mt-2">

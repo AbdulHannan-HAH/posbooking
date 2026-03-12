@@ -20,7 +20,8 @@ import {
   Download,
   FileText,
   BarChart3,
-  Loader2
+  Loader2,
+  Percent
 } from 'lucide-react';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -86,16 +87,18 @@ export default function PoolReports() {
             label,
             revenue: item.revenue,
             bookings: item.bookings,
-            visitors: item.visitors
+            visitors: item.visitors,
+            discounts: item.totalDiscounts || 0,
+            subtotal: item.subtotal || item.revenue
           };
         }) || [];
 
         // Process pass type data
         const processedPassTypeData = response.passTypeData?.map((item: any) => {
           const typeMap: Record<string, string> = {
-            'hourly': 'Hourly Pass',
             'daily': 'Daily Pass',
-            'family': 'Family Pass'
+            'family': 'Family Pass',
+            'hourly': 'Others Pass' // Changed from 'Hourly Pass' to 'Others Pass'
           };
           const colors = [
             'hsl(var(--pool))',
@@ -108,6 +111,8 @@ export default function PoolReports() {
             name: typeMap[item._id] || item._id,
             value: item.count,
             revenue: item.revenue,
+            discounts: item.discounts || 0,
+            subtotal: item.subtotal || item.revenue,
             color: colors[index] || 'hsl(var(--muted-foreground))'
           };
         }) || [];
@@ -126,7 +131,8 @@ export default function PoolReports() {
             slot: timeMap[item._id] || item._id,
             visitors: item.visitors,
             revenue: item.revenue,
-            bookings: item.bookings
+            bookings: item.bookings,
+            discounts: item.discounts || 0
           };
         }).sort((a: any, b: any) => a.slot.localeCompare(b.slot)) || [];
 
@@ -145,8 +151,8 @@ export default function PoolReports() {
   };
 
   const handleExportCSV = () => {
-    const csvContent = 'Date,Bookings,Revenue,Visitors\n' +
-      revenueData.map(d => `${d.label},${d.bookings},${d.revenue},${d.visitors}`).join('\n');
+    const csvContent = 'Date,Bookings,Visitors,Subtotal,Discounts,Revenue\n' +
+      revenueData.map(d => `${d.label},${d.bookings},${d.visitors},${d.subtotal},${d.discounts},${d.revenue}`).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -164,6 +170,7 @@ export default function PoolReports() {
   const totalRevenue = revenueData.reduce((sum, d) => sum + d.revenue, 0);
   const totalBookings = revenueData.reduce((sum, d) => sum + d.bookings, 0);
   const totalVisitors = revenueData.reduce((sum, d) => sum + d.visitors, 0);
+  const totalDiscounts = revenueData.reduce((sum, d) => sum + (d.discounts || 0), 0);
   const avgRevenuePerBooking = totalBookings > 0 ? totalRevenue / totalBookings : 0;
 
   return (
@@ -253,11 +260,11 @@ export default function PoolReports() {
       ) : (
         <>
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <StatCard
               title="Total Revenue"
               value={`$${totalRevenue.toLocaleString()}`}
-              change={`${revenueData.length > 1 ? 'From period' : 'Current period'}`}
+              change={`${revenueData.length > 1 ? 'After discounts' : 'Current period'}`}
               changeType="positive"
               icon={DollarSign}
               iconClassName="gradient-pool"
@@ -279,9 +286,17 @@ export default function PoolReports() {
               iconClassName="gradient-hotel"
             />
             <StatCard
+              title="Total Discounts"
+              value={`$${totalDiscounts.toLocaleString()}`}
+              change="Discounts given"
+              changeType="neutral"
+              icon={Percent}
+              iconClassName="bg-warning/20"
+            />
+            <StatCard
               title="Avg. Revenue/Booking"
               value={`$${avgRevenuePerBooking.toFixed(2)}`}
-              change="Current period average"
+              change="After discounts"
               changeType="neutral"
               icon={TrendingUp}
               iconClassName="bg-success/20"
@@ -387,7 +402,7 @@ export default function PoolReports() {
                         <Tooltip
                           formatter={(value, name, props) => [
                             value,
-                            `${props.payload.name}: $${props.payload.revenue}`
+                            `${props.payload.name}: $${props.payload.revenue} (Discounts: $${props.payload.discounts})`
                           ]}
                         />
                         <Legend />
@@ -455,6 +470,8 @@ export default function PoolReports() {
                         <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Period</th>
                         <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Bookings</th>
                         <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Visitors</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Subtotal</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Discounts</th>
                         <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Revenue</th>
                         <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Avg/Booking</th>
                       </tr>
@@ -465,6 +482,8 @@ export default function PoolReports() {
                           <td className="py-3 px-4 font-medium">{row.label}</td>
                           <td className="py-3 px-4">{row.bookings}</td>
                           <td className="py-3 px-4">{row.visitors}</td>
+                          <td className="py-3 px-4">${(row.subtotal || row.revenue).toLocaleString()}</td>
+                          <td className="py-3 px-4">${(row.discounts || 0).toLocaleString()}</td>
                           <td className="py-3 px-4 font-medium">${row.revenue.toLocaleString()}</td>
                           <td className="py-3 px-4">${(row.revenue / row.bookings).toFixed(2)}</td>
                         </tr>
@@ -473,6 +492,8 @@ export default function PoolReports() {
                         <td className="py-3 px-4">Total</td>
                         <td className="py-3 px-4">{totalBookings}</td>
                         <td className="py-3 px-4">{totalVisitors}</td>
+                        <td className="py-3 px-4">${(totalRevenue + totalDiscounts).toLocaleString()}</td>
+                        <td className="py-3 px-4 text-pool">-${totalDiscounts.toLocaleString()}</td>
                         <td className="py-3 px-4 text-pool">${totalRevenue.toLocaleString()}</td>
                         <td className="py-3 px-4">${avgRevenuePerBooking.toFixed(2)}</td>
                       </tr>
