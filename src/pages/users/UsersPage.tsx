@@ -73,16 +73,21 @@ export default function UsersPage() {
   });
   const [editFormData, setEditFormData] = useState<{
     name: string;
+    username: string;
     email: string;
+    password: string;
     role: User['role'];
     isActive: boolean;
   }>({
     name: '',
+    username: '',
     email: '',
+    password: '',
     role: 'pool_staff',
     isActive: true,
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
   const { toast } = useToast();
   const { authFetch } = useAuth();
 
@@ -157,7 +162,9 @@ export default function UsersPage() {
     setSelectedUser(user);
     setEditFormData({
       name: user.name,
+      username: user.username,
       email: user.email,
+      password: '',
       role: user.role,
       isActive: user.isActive,
     });
@@ -168,12 +175,23 @@ export default function UsersPage() {
     if (!selectedUser) return;
 
     try {
+      const body: any = {
+        name: editFormData.name,
+        username: editFormData.username,
+        email: editFormData.email,
+        role: editFormData.role,
+        isActive: editFormData.isActive,
+      };
+      if (editFormData.password) {
+        body.password = editFormData.password;
+      }
+
       const response = await authFetch(`/users/${selectedUser._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(editFormData),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
@@ -309,6 +327,8 @@ export default function UsersPage() {
           </div>
           <p className="text-muted-foreground mt-1">Manage system users and their roles</p>
         </div>
+
+        {/* Create User Dialog */}
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button className="gradient-admin border-0">
@@ -316,7 +336,7 @@ export default function UsersPage() {
               Add User
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New User</DialogTitle>
               <DialogDescription>
@@ -357,7 +377,7 @@ export default function UsersPage() {
                 <div className="relative">
                   <Input
                     id="password"
-                    type={showPassword ? "text" : "password"}
+                    type={showPassword ? 'text' : 'password'}
                     placeholder="Enter password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -369,11 +389,7 @@ export default function UsersPage() {
                     className="absolute right-0 top-0 h-full px-3"
                     onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
@@ -410,11 +426,11 @@ export default function UsersPage() {
 
       {/* Edit User Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
             <DialogDescription>
-              Update user information and permissions.
+              Update user information and permissions. Leave password blank to keep unchanged.
             </DialogDescription>
           </DialogHeader>
           {selectedUser && (
@@ -429,6 +445,15 @@ export default function UsersPage() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="edit-username">Username</Label>
+                <Input
+                  id="edit-username"
+                  placeholder="Enter username"
+                  value={editFormData.username}
+                  onChange={(e) => setEditFormData({ ...editFormData, username: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="edit-email">Email</Label>
                 <Input
                   id="edit-email"
@@ -437,6 +462,27 @@ export default function UsersPage() {
                   value={editFormData.email}
                   onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-password">Password (leave blank to keep unchanged)</Label>
+                <div className="relative">
+                  <Input
+                    id="edit-password"
+                    type={showEditPassword ? 'text' : 'password'}
+                    placeholder="Enter new password"
+                    value={editFormData.password}
+                    onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowEditPassword(!showEditPassword)}
+                  >
+                    {showEditPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-role">Role</Label>
@@ -465,8 +511,12 @@ export default function UsersPage() {
                 />
               </div>
               <div className="text-sm text-muted-foreground">
-                <p>Username: <span className="font-medium">{selectedUser.username}</span></p>
-                <p>Created: {new Date(selectedUser.createdAt).toLocaleDateString()}</p>
+                <p>
+                  Username: <span className="font-medium">{selectedUser.username}</span>
+                </p>
+                <p>
+                  Created: {new Date(selectedUser.createdAt).toLocaleDateString()}
+                </p>
               </div>
             </div>
           )}
@@ -506,12 +556,24 @@ export default function UsersPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">User</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Username</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Email</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Role</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Status</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Actions</th>
+                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
+                    User
+                  </th>
+                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
+                    Username
+                  </th>
+                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
+                    Email
+                  </th>
+                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
+                    Role
+                  </th>
+                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
+                    Status
+                  </th>
+                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -530,7 +592,9 @@ export default function UsersPage() {
                     <td className="py-3 px-2 text-muted-foreground">{user.username}</td>
                     <td className="py-3 px-2 text-muted-foreground">{user.email}</td>
                     <td className="py-3 px-2">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[user.role]}`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[user.role]}`}
+                      >
                         {roleLabels[user.role]}
                       </span>
                     </td>
@@ -540,7 +604,9 @@ export default function UsersPage() {
                           checked={user.isActive}
                           onCheckedChange={() => handleToggleStatus(user)}
                         />
-                        <span className={`text-xs ${user.isActive ? 'text-success' : 'text-destructive'}`}>
+                        <span
+                          className={`text-xs ${user.isActive ? 'text-success' : 'text-destructive'}`}
+                        >
                           {user.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </div>
